@@ -9,7 +9,10 @@ from flask import (
 app = Flask(__name__)
 app.secret_key = "thesis-workflow-secret-key"
 
-DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "thesis.db")
+if os.environ.get("RENDER"):
+    DATABASE = "/tmp/thesis.db"
+else:
+    DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "thesis.db")
 
 # ---------------------------------------------------------------------------
 # Valid transitions
