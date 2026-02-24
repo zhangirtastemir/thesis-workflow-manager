@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Thesis Workflow Manager{% endblock %}</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --info: #0891b2;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* Navbar */
+    nav {
+      background: var(--gray-900);
+      color: #fff;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      gap: 2rem;
+    }
+    nav .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+    nav a {
+      color: var(--gray-300);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.15s;
+    }
+    nav a:hover, nav a.active { color: #fff; }
+
+    /* Layout */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+    }
+
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+    h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+    h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+
+    /* Flash messages */
+    .flash {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .flash.success { background: #dcfce7; color: #166534; }
+    .flash.danger  { background: #fee2e2; color: #991b1b; }
+
+    /* Cards */
+    .card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 0.9rem;
+    }
+    th {
+      background: var(--gray-100);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--gray-500);
+    }
+    tr:hover td { background: var(--gray-50); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+      line-height: 1.4;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary   { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success   { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger    { background: var(--danger); color: #fff; }
+    .btn-danger:hover  { background: #b91c1c; }
+    .btn-warning   { background: var(--warning); color: #fff; }
+    .btn-warning:hover { background: #b45309; }
+    .btn-info      { background: var(--info); color: #fff; }
+    .btn-info:hover    { background: #0e7490; }
+    .btn-outline {
+      background: transparent;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+    .btn-outline:hover { background: var(--gray-100); }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.78rem; }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .badge-Draft            { background: #e5e7eb; color: #374151; }
+    .badge-Submitted        { background: #dbeafe; color: #1e40af; }
+    .badge-UnderReview      { background: #fef3c7; color: #92400e; }
+    .badge-RevisionRequested { background: #fee2e2; color: #991b1b; }
+    .badge-ExternallyReviewed { background: #ede9fe; color: #5b21b6; }
+    .badge-Approved         { background: #d1fae5; color: #065f46; }
+    .badge-FinalSubmitted   { background: #e0e7ff; color: #3730a3; }
+    .badge-Completed        { background: #dcfce7; color: #166534; }
+    .badge-Late             { background: #dc2626; color: #fff; }
+    .badge-Planned          { background: #e5e7eb; color: #374151; }
+    .badge-InProgress       { background: #fef3c7; color: #92400e; }
+    .badge-Accepted         { background: #dcfce7; color: #166534; }
+    .badge-Approve          { background: #dcfce7; color: #166534; }
+    .badge-Reject           { background: #fee2e2; color: #991b1b; }
+    .badge-MinorRevision    { background: #fef3c7; color: #92400e; }
+
+    /* Late row highlight */
+    tr.row-late td { background: #fef2f2; }
+
+    /* Deadline overdue indicator */
+    .deadline-overdue {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      color: var(--gray-700);
+    }
+    .form-control {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+    select.form-control { appearance: auto; }
+
+    /* Flex helpers */
+    .flex { display: flex; }
+    .flex-wrap { flex-wrap: wrap; }
+    .gap-sm { gap: 0.5rem; }
+    .gap-md { gap: 1rem; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+
+    /* Grid */
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .stat-card .label {
+      font-size: 0.78rem;
+      color: var(--gray-500);
+      margin-top: 0.2rem;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .modal h3 { margin-bottom: 1rem; }
+
+    /* Section spacing */
+    .section { margin-top: 1.5rem; }
+
+    /* Misc */
+    .text-muted { color: var(--gray-500); }
+    .text-sm { font-size: 0.85rem; }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mt-1 { margin-top: 0.5rem; }
+    .mr-1 { margin-right: 0.5rem; }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gray-500);
+    }
+
+    .inline-form { display: inline; }
+
+    /* Filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .filter-bar .filter-chip {
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      border: 1px solid var(--gray-300);
+      background: #fff;
+      color: var(--gray-700);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .filter-bar .filter-chip:hover { background: var(--gray-100); text-decoration: none; }
+    .filter-bar .filter-chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">Thesis Workflow</span>
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('thesis_list') }}" class="{{ 'active' if request.endpoint in ('thesis_list','thesis_detail','thesis_create','thesis_edit') }}">Theses</a>
+  </nav>
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+
+  <script>
+    function openModal(id) {
+      document.getElementById(id).classList.add('show');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+    // Close modal on backdrop click
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('modal-backdrop')) {
+        e.target.classList.remove('show');
+      }
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

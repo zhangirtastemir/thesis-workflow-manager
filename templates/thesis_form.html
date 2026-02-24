@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit Thesis" if thesis else "New Thesis" }} - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>{{ "Edit Thesis" if thesis else "New Thesis" }}</h1>
+
+<div class="card" style="max-width:600px;">
+  <form method="POST">
+    <div class="form-group">
+      <label for="title">Title *</label>
+      <input type="text" id="title" name="title" class="form-control"
+             value="{{ thesis.title if thesis else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label for="abstract">Abstract</label>
+      <textarea id="abstract" name="abstract" class="form-control">{{ thesis.abstract if thesis else '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label for="student_id">Student *</label>
+      <select id="student_id" name="student_id" class="form-control" required>
+        <option value="">-- Select Student --</option>
+        {% for s in students %}
+        <option value="{{ s.student_id }}"
+          {{ 'selected' if thesis and thesis.student_id == s.student_id }}>
+          {{ s.name }} ({{ s.email }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="supervisor_id">Supervisor (optional)</label>
+      <select id="supervisor_id" name="supervisor_id" class="form-control">
+        <option value="">-- No Supervisor --</option>
+        {% for sup in supervisors %}
+        <option value="{{ sup.supervisor_id }}"
+          {{ 'selected' if thesis and thesis.supervisor_id == sup.supervisor_id }}>
+          {{ sup.name }} — {{ sup.department }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="external_reviewer_id">External Reviewer (optional)</label>
+      <select id="external_reviewer_id" name="external_reviewer_id" class="form-control">
+        <option value="">-- No External Reviewer --</option>
+        {% for r in reviewers %}
+        <option value="{{ r.id }}"
+          {{ 'selected' if thesis and thesis.external_reviewer_id == r.id }}>
+          {{ r.name }} ({{ r.email }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="submission_deadline">Submission Deadline (optional)</label>
+      <input type="date" id="submission_deadline" name="submission_deadline" class="form-control"
+             value="{{ thesis.submission_deadline if thesis and thesis.submission_deadline else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Committee Members (optional, hold Ctrl/Cmd to select multiple)</label>
+      <select name="committee_member_ids" class="form-control" multiple size="{{ [committee_members|length, 5]|min }}">
+        {% for cm in committee_members %}
+        <option value="{{ cm.id }}"
+          {{ 'selected' if cm.id in selected_committee_ids }}>
+          {{ cm.name }} ({{ cm.email }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex gap-sm">
+      <button type="submit" class="btn btn-primary">{{ "Update" if thesis else "Create" }}</button>
+      <a href="{{ url_for('thesis_detail', thesis_id=thesis.thesis_id) if thesis else url_for('thesis_list') }}"
+         class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

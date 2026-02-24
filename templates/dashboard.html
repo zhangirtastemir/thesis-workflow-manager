@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="grid-stats">
+  <div class="stat-card">
+    <div class="number">{{ total }}</div>
+    <div class="label">Total Theses</div>
+  </div>
+  {% for status in thesis_statuses %}
+  <div class="stat-card">
+    <div class="number">{{ counts[status] }}</div>
+    <div class="label"><span class="badge badge-{{ status }}">{{ status }}</span></div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="flex justify-between items-center mb-2">
+    <h2>Recently Updated</h2>
+    <a href="{{ url_for('thesis_list') }}" class="btn btn-outline btn-sm">View All</a>
+  </div>
+  {% if recent %}
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Student</th>
+        <th>Status</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in recent %}
+      <tr>
+        <td><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+        <td>{{ t.student_name }}</td>
+        <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+        <td class="text-muted text-sm">{{ t.updated_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No theses yet. <a href="{{ url_for('thesis_create') }}">Create one</a>.</div>
+  {% endif %}
+</div>
+{% endblock %}

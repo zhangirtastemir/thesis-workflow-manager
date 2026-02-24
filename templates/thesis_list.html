@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Theses - Thesis Workflow{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-2">
+  <h1>Theses</h1>
+  <a href="{{ url_for('thesis_create') }}" class="btn btn-primary">+ New Thesis</a>
+</div>
+
+<div class="filter-bar">
+  <span class="text-sm text-muted mr-1">Filter:</span>
+  <a href="{{ url_for('thesis_list') }}"
+     class="filter-chip {{ 'active' if not status_filter }}">All</a>
+  {% for s in thesis_statuses %}
+  <a href="{{ url_for('thesis_list', status=s) }}"
+     class="filter-chip {{ 'active' if status_filter == s }}">{{ s }}</a>
+  {% endfor %}
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if theses %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Student</th>
+        <th>Supervisor</th>
+        <th>Status</th>
+        <th>Deadline</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in theses %}
+      <tr class="{{ 'row-late' if t.status == 'Late' }}">
+        <td>{{ t.thesis_id }}</td>
+        <td><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+        <td>{{ t.student_name }}</td>
+        <td>{{ t.supervisor_name }}</td>
+        <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+        <td class="text-sm {{ 'deadline-overdue' if t.submission_deadline and t.submission_deadline < today and t.status not in ('Approved','FinalSubmitted','Completed') }}">
+          {{ t.submission_deadline or '—' }}
+        </td>
+        <td class="text-muted text-sm">{{ t.updated_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No theses found.</div>
+  {% endif %}
+</div>
+{% endblock %}

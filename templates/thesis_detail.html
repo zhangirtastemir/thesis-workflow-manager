@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+{% block title %}{{ thesis.title }} - Thesis Workflow{% endblock %}
+{% block content %}
+
+{# ── Header ── #}
+<div class="flex justify-between items-center mb-2">
+  <div>
+    <a href="{{ url_for('thesis_list') }}" class="text-sm">&larr; Back to list</a>
+    <h1 style="margin-top:0.3rem;">{{ thesis.title }}</h1>
+  </div>
+  <div class="flex gap-sm">
+    <a href="{{ url_for('thesis_edit', thesis_id=thesis.thesis_id) }}" class="btn btn-outline btn-sm">Edit</a>
+    <form method="POST" action="{{ url_for('thesis_delete', thesis_id=thesis.thesis_id) }}"
+          class="inline-form"
+          onsubmit="return confirm('Delete this thesis and all its milestones/submissions?');">
+      <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+    </form>
+  </div>
+</div>
+
+{# ── Info Card ── #}
+<div class="card">
+  <div class="flex gap-md flex-wrap">
+    <div style="flex:1; min-width:280px;">
+      <p class="text-sm text-muted mb-1">Abstract</p>
+      <p>{{ thesis.abstract or "No abstract provided." }}</p>
+    </div>
+    <div style="min-width:220px;">
+      <p class="text-sm mb-1"><strong>Student:</strong> {{ thesis.student_name }} ({{ thesis.student_email }})</p>
+      <p class="text-sm mb-1">
+        <strong>Supervisor:</strong>
+        {% if thesis.supervisor_name %}
+          {{ thesis.supervisor_name }} — {{ thesis.department }}
+        {% else %}
+          <span class="text-muted">Not assigned</span>
+        {% endif %}
+      </p>
+      <p class="text-sm mb-1">
+        <strong>External Reviewer:</strong>
+        {% if thesis.reviewer_name %}
+          {{ thesis.reviewer_name }} ({{ thesis.reviewer_email }})
+        {% else %}
+          <span class="text-muted">Not assigned</span>
+        {% endif %}
+      </p>
+      <p class="text-sm mb-1"><strong>Status:</strong> <span class="badge badge-{{ thesis.status }}">{{ thesis.status }}</span></p>
+      <p class="text-sm mb-1">
+        <strong>Deadline:</strong>
+        {% if thesis.submission_deadline %}
+          <span class="{{ 'deadline-overdue' if thesis.submission_deadline < today and thesis.status not in ('Approved','FinalSubmitted','Completed') }}">
+            {{ thesis.submission_deadline }}
+            {% if thesis.submission_deadline < today and thesis.status not in ('Approved','FinalSubmitted','Completed') %}
+              (OVERDUE)
+            {% endif %}
+          </span>
+        {% else %}
+          <span class="text-muted">Not set</span>
+        {% endif %}
+      </p>
+      <p class="text-sm text-muted">Created: {{ thesis.created_at }}  |  Updated: {{ thesis.updated_at }}</p>
+    </div>
+  </div>
+</div>
+
+{# ── Status Transitions ── #}
+{% set allowed = thesis_transitions[thesis.status] %}
+<div class="card">
+  <h3>Status Transitions</h3>
+  {% set has_buttons = [] %}
+  {% if allowed %}
+  <div class="flex gap-sm flex-wrap mt-1">
+    {% for next_status in allowed %}
+      {% if next_status == "ExternallyReviewed" and not thesis.external_reviewer_id %}
+        {# Hide button; reviewer must be assigned first #}
+      {% elif next_status == "Approved" and not can_approve %}
+        {# Hide Approved button when committee guard fails #}
+      {% else %}
+        {% if has_buttons.append(1) %}{% endif %}
+        <form method="POST" action="{{ url_for('thesis_transition', thesis_id=thesis.thesis_id) }}" class="inline-form">
+          <input type="hidden" name="new_status" value="{{ next_status }}">
+          <button type="submit" class="btn btn-info btn-sm">
+            {{ thesis.status }} &rarr; {{ next_status }}
+          </button>
+        </form>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% if not has_buttons and allowed %}
+    {% set needs_reviewer = "ExternallyReviewed" in allowed and not thesis.external_reviewer_id %}
+    {% set needs_committee = "Approved" in allowed and not can_approve %}
+    {% if needs_reviewer %}
+    <p class="text-sm text-muted mt-1">Assign an External Reviewer to enable the ExternallyReviewed transition.</p>
+    {% endif %}
+    {% if needs_committee %}
+    <p class="text-sm text-muted mt-1">{{ approve_reason }}</p>
+    {% endif %}
+  {% endif %}
+  {% else %}
+  <p class="text-sm text-muted mt-1">No further transitions available ({{ thesis.status }} is a terminal state).</p>
+  {% endif %}
+
+  {% if "Approved" in allowed and not can_approve and has_buttons %}
+  <p class="text-sm text-muted mt-1">Note: "Approved" transition is blocked — {{ approve_reason }}</p>
+  {% endif %}
+</div>
+
+{# ── Assign Supervisor ── #}
+<div class="card">
+  <h3>Assign / Change Supervisor</h3>
+  <form method="POST" action="{{ url_for('thesis_assign_supervisor', thesis_id=thesis.thesis_id) }}" class="flex gap-sm items-center mt-1">
+    <select name="supervisor_id" class="form-control" style="max-width:350px;">
+      <option value="">-- No Supervisor --</option>
+      {% for sup in supervisors %}
+      <option value="{{ sup.supervisor_id }}"
+        {{ 'selected' if thesis.supervisor_id == sup.supervisor_id }}>
+        {{ sup.name }} — {{ sup.department }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+  </form>
+</div>
+
+{# ── Assign External Reviewer ── #}
+<div class="card">
+  <h3>Assign / Change External Reviewer</h3>
+  <form method="POST" action="{{ url_for('thesis_assign_reviewer', thesis_id=thesis.thesis_id) }}" class="flex gap-sm items-center mt-1">
+    <select name="external_reviewer_id" class="form-control" style="max-width:350px;">
+      <option value="">-- No External Reviewer --</option>
+      {% for r in reviewers %}
+      <option value="{{ r.id }}"
+        {{ 'selected' if thesis.external_reviewer_id == r.id }}>
+        {{ r.name }} ({{ r.email }})
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+  </form>
+</div>
+
+{# ── Committee ── #}
+<div class="section">
+  <h2>Committee Review</h2>
+
+  {# Manage committee members #}
+  <div class="card">
+    <h3>Assigned Committee Members</h3>
+    <form method="POST" action="{{ url_for('thesis_update_committee', thesis_id=thesis.thesis_id) }}">
+      <div class="form-group mt-1">
+        <select name="committee_member_ids" class="form-control" multiple size="{{ [all_committee|length, 5]|min }}" style="max-width:400px;">
+          {% for cm in all_committee %}
+          <option value="{{ cm.id }}" {{ 'selected' if cm.id in assigned_committee_ids }}>
+            {{ cm.name }} ({{ cm.email }})
+          </option>
+          {% endfor %}
+        </select>
+        <p class="text-sm text-muted mt-1">Hold Ctrl/Cmd to select multiple members.</p>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Update Committee</button>
+    </form>
+  </div>
+
+  {# Committee decision status #}
+  {% if member_decisions %}
+  <div class="card">
+    <h3>Committee Decision Status</h3>
+    {% if can_approve %}
+    <p class="text-sm" style="color: var(--success); margin-bottom: 0.5rem;">All committee decisions submitted with no rejections. Ready for Approved transition.</p>
+    {% elif approve_reason %}
+    <p class="text-sm" style="color: var(--danger); margin-bottom: 0.5rem;">{{ approve_reason }}</p>
+    {% endif %}
+    <table>
+      <thead>
+        <tr><th>Member</th><th>Decision</th><th>Comment</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for md in member_decisions %}
+        <tr>
+          <td>{{ md.name }}</td>
+          <td>
+            {% if md.decision %}
+              <span class="badge badge-{{ md.decision|replace(' ', '') }}">{{ md.decision }}</span>
+            {% else %}
+              <span class="text-muted">Pending</span>
+            {% endif %}
+          </td>
+          <td class="text-sm">{{ md.comment or "—" }}</td>
+          <td class="text-sm text-muted">{{ md.created_at or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# Submit a decision #}
+  {% if assigned_committee_ids %}
+  <div class="card">
+    <h3>Submit Committee Decision</h3>
+    <form method="POST" action="{{ url_for('committee_decision_submit', thesis_id=thesis.thesis_id) }}">
+      <div class="flex gap-sm flex-wrap items-center mt-1">
+        <select name="committee_member_id" class="form-control" style="max-width:250px;" required>
+          <option value="">-- Select Member --</option>
+          {% for md in member_decisions %}
+          <option value="{{ md.id }}">{{ md.name }}</option>
+          {% endfor %}
+          {% if not member_decisions %}
+            {% for cm in all_committee if cm.id in assigned_committee_ids %}
+            <option value="{{ cm.id }}">{{ cm.name }}</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+        <select name="decision" class="form-control" style="max-width:180px;" required>
+          <option value="">-- Decision --</option>
+          {% for d in committee_decisions %}
+          <option value="{{ d }}">{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group mt-1">
+        <textarea name="comment" class="form-control" placeholder="Optional comment" style="max-width:500px;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Submit Decision</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {# Full decision log #}
+  {% if decision_log %}
+  <div class="card">
+    <h3>Decision History</h3>
+    <table>
+      <thead>
+        <tr><th>Member</th><th>Decision</th><th>Comment</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for dl in decision_log %}
+        <tr>
+          <td>{{ dl.member_name }}</td>
+          <td><span class="badge badge-{{ dl.decision|replace(' ', '') }}">{{ dl.decision }}</span></td>
+          <td class="text-sm">{{ dl.comment or "—" }}</td>
+          <td class="text-sm text-muted">{{ dl.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Milestones ── #}
+<div class="section">
+  <div class="flex justify-between items-center mb-1">
+    <h2>Milestones</h2>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addMilestoneModal')">+ Add Milestone</button>
+  </div>
+
+  {% if milestones %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Type</th><th>Due Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for m in milestones %}
+        <tr>
+          <td>{{ m.type }}</td>
+          <td>{{ m.due_date }}</td>
+          <td><span class="badge badge-{{ m.status }}">{{ m.status }}</span></td>
+          <td class="text-sm">{{ m.notes or "" }}</td>
+          <td>
+            <div class="flex gap-sm flex-wrap">
+              {# Transition buttons #}
+              {% set ms_allowed = milestone_transitions[m.status] %}
+              {% for ns in ms_allowed %}
+              <form method="POST" action="{{ url_for('milestone_transition', milestone_id=m.milestone_id) }}" class="inline-form">
+                <input type="hidden" name="new_status" value="{{ ns }}">
+                <button type="submit" class="btn btn-info btn-sm">{{ ns }}</button>
+              </form>
+              {% endfor %}
+              {# Edit #}
+              <button class="btn btn-outline btn-sm" onclick="openModal('editMs{{ m.milestone_id }}')">Edit</button>
+              {# Delete #}
+              <form method="POST" action="{{ url_for('milestone_delete', milestone_id=m.milestone_id) }}" class="inline-form"
+                    onsubmit="return confirm('Delete this milestone?');">
+                <button type="submit" class="btn btn-danger btn-sm">Del</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Edit milestone modals #}
+  {% for m in milestones %}
+  <div class="modal-backdrop" id="editMs{{ m.milestone_id }}">
+    <div class="modal">
+      <h3>Edit Milestone</h3>
+      <form method="POST" action="{{ url_for('milestone_edit', milestone_id=m.milestone_id) }}">
+        <div class="form-group">
+          <label>Type *</label>
+          <input type="text" name="type" class="form-control" value="{{ m.type }}" required>
+        </div>
+        <div class="form-group">
+          <label>Due Date *</label>
+          <input type="date" name="due_date" class="form-control" value="{{ m.due_date }}" required>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea name="notes" class="form-control">{{ m.notes or "" }}</textarea>
+        </div>
+        <div class="flex gap-sm">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal('editMs{{ m.milestone_id }}')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="card empty-state">No milestones yet.</div>
+  {% endif %}
+</div>
+
+{# Add Milestone Modal #}
+<div class="modal-backdrop" id="addMilestoneModal">
+  <div class="modal">
+    <h3>Add Milestone</h3>
+    <form method="POST" action="{{ url_for('milestone_add', thesis_id=thesis.thesis_id) }}">
+      <div class="form-group">
+        <label>Type *</label>
+        <input type="text" name="type" class="form-control" placeholder="e.g. Literature Review" required>
+      </div>
+      <div class="form-group">
+        <label>Due Date *</label>
+        <input type="date" name="due_date" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" class="form-control" placeholder="Optional notes"></textarea>
+      </div>
+      <div class="flex gap-sm">
+        <button type="submit" class="btn btn-primary">Add</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal('addMilestoneModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Submissions ── #}
+<div class="section">
+  <div class="flex justify-between items-center mb-1">
+    <h2>Submissions</h2>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addSubmissionModal')">+ Add Submission</button>
+  </div>
+
+  {% if submissions %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Kind</th><th>Submitted At</th><th>Comment</th><th>Link</th></tr>
+      </thead>
+      <tbody>
+        {% for s in submissions %}
+        <tr>
+          <td><span class="badge badge-Submitted">{{ s.kind }}</span></td>
+          <td class="text-sm">{{ s.submitted_at }}</td>
+          <td class="text-sm">{{ s.comment or "" }}</td>
+          <td class="text-sm">
+            {% if s.attachment_path_or_url %}
+              <a href="{{ s.attachment_path_or_url }}" target="_blank">View</a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No submissions yet.</div>
+  {% endif %}
+</div>
+
+{# Add Submission Modal #}
+<div class="modal-backdrop" id="addSubmissionModal">
+  <div class="modal">
+    <h3>Add Submission</h3>
+    <form method="POST" action="{{ url_for('submission_add', thesis_id=thesis.thesis_id) }}">
+      <div class="form-group">
+        <label>Kind *</label>
+        <select name="kind" class="form-control" required>
+          {% for k in submission_kinds %}
+          <option value="{{ k }}">{{ k|title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Comment</label>
+        <textarea name="comment" class="form-control" placeholder="Describe the submission"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Attachment URL (optional)</label>
+        <input type="text" name="attachment_path_or_url" class="form-control" placeholder="https://...">
+      </div>
+      <div class="flex gap-sm">
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal('addSubmissionModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Status History ── #}
+<div class="section">
+  <h2>Status History</h2>
+  {% if history %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>From</th><th></th><th>To</th><th>Changed At</th></tr>
+      </thead>
+      <tbody>
+        {% for h in history %}
+        <tr>
+          <td>
+            {% if h.old_status %}
+              <span class="badge badge-{{ h.old_status }}">{{ h.old_status }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>&rarr;</td>
+          <td><span class="badge badge-{{ h.new_status }}">{{ h.new_status }}</span></td>
+          <td class="text-sm text-muted">{{ h.changed_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No history recorded.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
