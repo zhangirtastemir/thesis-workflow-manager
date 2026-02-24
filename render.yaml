@@ -3,7 +3,7 @@ services:
     name: thesis-workflow-manager
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --workers 1 --preload
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.6"
