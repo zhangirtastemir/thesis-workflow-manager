@@ -807,10 +807,11 @@ def seed():
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+init_db()
+migrate_db()
+seed()
+
 if __name__ == "__main__":
-    init_db()
-    migrate_db()
-    seed()
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Thesis Workflow Manager on http://127.0.0.1:{port}")
     app.run(debug=True, host="0.0.0.0", port=port)
