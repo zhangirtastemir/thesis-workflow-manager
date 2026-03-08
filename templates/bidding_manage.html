@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Bidding Management - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>Bidding Management</h1>
+
+{% if not open_round %}
+<div class="card empty-state">
+  <p>No bidding round is currently open.</p>
+  <p class="text-sm text-muted mt-1">When a round is opened by the admin, you can add your proposals to it here.</p>
+</div>
+{% else %}
+
+<div class="flash success">
+  Active round: <strong>{{ open_round.name }}</strong> ({{ open_round.start_date }} – {{ open_round.end_date }})
+</div>
+
+{# ── Proposals in Current Round ── #}
+<div class="section">
+  <h2>My Proposals in This Round <span class="badge badge-Open">{{ in_round|length }}</span></h2>
+  {% if in_round %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Status</th><th>Bids</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for p in in_round %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+          <td>{{ p.bid_count }}</td>
+          <td>
+            {% if p.bid_count == 0 %}
+            <form method="POST" action="{{ url_for('bidding_manage_remove', proposal_id=p.id) }}" class="inline-form"
+                  onsubmit="return confirm('Remove this proposal from the round?');">
+              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+            {% else %}
+            <span class="text-sm text-muted">Has bids</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No proposals added to this round yet.</div>
+  {% endif %}
+</div>
+
+{# ── Available to Add ── #}
+<div class="section">
+  <h2>Available Proposals to Add</h2>
+  {% if available %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for p in available %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('bidding_manage_add', proposal_id=p.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-success btn-sm">Add to Round</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">All your published proposals are either in this round or already assigned.</div>
+  {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

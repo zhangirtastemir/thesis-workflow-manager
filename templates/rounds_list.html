@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Bidding Rounds - Thesis Workflow{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-2">
+  <h1>Bidding Rounds</h1>
+  <a href="{{ url_for('round_create') }}" class="btn btn-primary">+ New Round</a>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if rounds %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Start Date</th>
+        <th>Proposal Collection End</th>
+        <th>End Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rounds %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.start_date }}</td>
+        <td>{{ r.proposal_collection_end or '—' }}</td>
+        <td>{{ r.end_date }}</td>
+        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
+        <td>
+          <div class="flex gap-sm">
+            {% if r.status == 'Planned' %}
+            <form method="POST" action="{{ url_for('round_open', round_id=r.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-success btn-sm">Open</button>
+            </form>
+            {% elif r.status == 'Open' %}
+            <form method="POST" action="{{ url_for('round_close', round_id=r.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-danger btn-sm">Close</button>
+            </form>
+            {% elif r.status == 'Closed' %}
+            <a href="{{ url_for('round_assignments', round_id=r.id) }}" class="btn btn-info btn-sm">Assignments</a>
+            {% else %}
+            <span class="text-muted text-sm">No actions</span>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No bidding rounds yet. Create one to get started.</div>
+  {% endif %}
+</div>
+{% endblock %}

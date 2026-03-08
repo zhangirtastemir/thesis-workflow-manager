@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>Admin Dashboard</h1>
+
+{# ── Global Stats ── #}
+<div class="grid-stats">
+  <div class="stat-card">
+    <div class="number">{{ stats.ongoing }}</div>
+    <div class="label">Ongoing Theses</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ stats.terminated }}</div>
+    <div class="label">Terminated Theses</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ stats.stopped }}</div>
+    <div class="label">Stopped/Cancelled</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ stats.proposals }}</div>
+    <div class="label">Proposals</div>
+  </div>
+  <div class="stat-card" style="border-color:var(--success);">
+    <div class="number" style="color:var(--success);">{{ stats.reviewer_assigned }}</div>
+    <div class="label">Reviewers Assigned</div>
+  </div>
+  {% if stats.reviewer_missing > 0 %}
+  <div class="stat-card" style="border-color:var(--warning);">
+    <div class="number" style="color:var(--warning);">{{ stats.reviewer_missing }}</div>
+    <div class="label">Missing Reviewer</div>
+  </div>
+  {% endif %}
+  {% if stats.round_phase %}
+  <div class="stat-card" style="border-color:var(--primary);">
+    <div class="number" style="font-size:1rem; color:var(--primary);">
+      {% if stats.round_phase == 'proposal_collection' %}Collecting{% else %}Bidding{% endif %}
+    </div>
+    <div class="label">Session Phase</div>
+  </div>
+  {% endif %}
+  {% if overdue_3m > 0 %}
+  <div class="stat-card" style="border-color:var(--danger);">
+    <div class="number" style="color:var(--danger);">{{ overdue_3m }}</div>
+    <div class="label">3M Review Overdue</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if open_round %}
+<div class="flash success">
+  Active round: <strong>{{ open_round.name }}</strong> ({{ open_round.start_date }} – {{ open_round.end_date }})
+  {% if open_round.proposal_collection_end %}
+  &middot; Proposal collection until {{ open_round.proposal_collection_end }}
+  {% endif %}
+  {% if round_phase == 'proposal_collection' %}
+  <span class="badge badge-Draft" style="margin-left:0.5rem;">Phase 1: Collecting Proposals</span>
+  {% elif round_phase == 'bidding' %}
+  <span class="badge badge-Open" style="margin-left:0.5rem;">Phase 2: Student Bidding</span>
+  {% endif %}
+  <a href="{{ url_for('bidding_governance') }}" style="margin-left:1rem;">Bidding Governance &rarr;</a>
+</div>
+{% endif %}
+
+{# ── Tabs ── #}
+<div class="tabs" data-tab-group="admin">
+  <button class="tab-btn active" data-tab="tab-ongoing" onclick="switchTab('admin','tab-ongoing')">Ongoing Theses ({{ ongoing|length }})</button>
+  <button class="tab-btn" data-tab="tab-terminated" onclick="switchTab('admin','tab-terminated')">Terminated ({{ terminated|length }})</button>
+  <button class="tab-btn" data-tab="tab-stopped" onclick="switchTab('admin','tab-stopped')">Stopped ({{ stopped|length }})</button>
+  <button class="tab-btn" data-tab="tab-proposals" onclick="switchTab('admin','tab-proposals')">Proposals ({{ proposals|length }})</button>
+  <button class="tab-btn" data-tab="tab-analytics" onclick="switchTab('admin','tab-analytics')">Analytics</button>
+</div>
+
+{# ── Tab 1: Ongoing Theses (Excel-like) ── #}
+<div id="tab-ongoing" class="tab-content active" data-tab-group="admin">
+  {% if ongoing %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>NEW/OLD</th><th>Candidate</th><th>Reviewer</th><th>Start</th><th>End?</th>
+            <th>3M*</th><th>Title</th><th>Supervisor</th><th>Add. Sup.</th>
+            <th>Challenging</th><th>External</th><th>Ext. Supervisor</th>
+            <th>Primary Topic</th><th>Secondary Topic</th><th>Abstract</th>
+            <th>Words</th><th>Duration</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in ongoing %}
+          <tr class="{{ 'row-new' if t.assignment_source == 'NEW' }}">
+            <td>
+              {% if t.assignment_source %}
+              <span class="badge badge-{{ t.assignment_source }}">{{ t.assignment_source }}</span>
+              {% endif %}
+            </td>
+            <td>{{ t.student_name }}</td>
+            <td>{{ t.reviewer_name or '—' }}</td>
+            <td>{{ t.start_date|mmm_yy }}</td>
+            <td>{{ t.expected_end|mmm_yy }}</td>
+            <td>
+              {% if t.start_date and not t.three_month_review_done %}
+                {% set days_since = (today|replace('-','') | int - t.start_date[:10]|replace('-','') | int) %}
+                {% if t.start_date and t.three_month_review_done == 0 %}
+                  {% set start_d = t.start_date[:10] %}
+                  <span class="flag-3m" title="3-month review overdue">*</span>
+                {% endif %}
+              {% endif %}
+            </td>
+            <td class="wrap-cell"><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+            <td>{{ t.supervisor_name }}</td>
+            <td>{{ t.additional_supervisor_name or '—' }}</td>
+            <td><span class="badge badge-{{ 'YES' if t.is_challenging else 'NO' }}">{{ 'YES' if t.is_challenging else 'NO' }}</span></td>
+            <td><span class="badge badge-{{ 'YES' if t.is_external else 'NO' }}">{{ 'YES' if t.is_external else 'NO' }}</span></td>
+            <td>{{ t.external_supervisor_name or '—' }}</td>
+            <td>{{ t.primary_topic or '—' }}</td>
+            <td>{{ t.secondary_topic or '—' }}</td>
+            <td class="abstract-preview">{{ (t.proposal_abstract or t.abstract or '—')[:100] }}</td>
+            <td>{{ (t.proposal_abstract or t.abstract or '')|word_count }}</td>
+            <td>{{ t.start_date|duration_months }}</td>
+            <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state">No ongoing theses.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 2: Terminated Theses ── #}
+<div id="tab-terminated" class="tab-content" data-tab-group="admin">
+  {% if terminated %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>NEW/OLD</th><th>Candidate</th><th>Reviewer</th><th>Start</th><th>End</th>
+            <th>Title</th><th>Supervisor</th><th>Add. Sup.</th>
+            <th>Challenging</th><th>External</th><th>Ext. Supervisor</th>
+            <th>Primary Topic</th><th>Secondary Topic</th>
+            <th>Duration (days)</th><th>Duration (months)</th><th>Notes</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in terminated %}
+          <tr>
+            <td>
+              {% if t.assignment_source %}
+              <span class="badge badge-{{ t.assignment_source }}">{{ t.assignment_source }}</span>
+              {% endif %}
+            </td>
+            <td>{{ t.student_name }}</td>
+            <td>{{ t.reviewer_name or '—' }}</td>
+            <td>{{ t.start_date|mmm_yy }}</td>
+            <td>{{ (t.terminated_at or t.updated_at)|mmm_yy }}</td>
+            <td class="wrap-cell"><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+            <td>{{ t.supervisor_name }}</td>
+            <td>{{ t.additional_supervisor_name or '—' }}</td>
+            <td><span class="badge badge-{{ 'YES' if t.is_challenging else 'NO' }}">{{ 'YES' if t.is_challenging else 'NO' }}</span></td>
+            <td><span class="badge badge-{{ 'YES' if t.is_external else 'NO' }}">{{ 'YES' if t.is_external else 'NO' }}</span></td>
+            <td>{{ t.external_supervisor_name or '—' }}</td>
+            <td>{{ t.primary_topic or '—' }}</td>
+            <td>{{ t.secondary_topic or '—' }}</td>
+            <td>{{ t.start_date|duration_days(t.terminated_at or t.updated_at) }}</td>
+            <td>{{ t.start_date|duration_months(t.terminated_at or t.updated_at) }}</td>
+            <td>{{ t.notes or '—' }}</td>
+            <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state">No terminated theses.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 3: Stopped/Cancelled ── #}
+<div id="tab-stopped" class="tab-content" data-tab-group="admin">
+  {% if stopped %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Candidate</th><th>Supervisor</th><th>Title</th><th>Start</th><th>Notes</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for t in stopped %}
+        <tr>
+          <td>{{ t.student_name }}</td>
+          <td>{{ t.supervisor_name }}</td>
+          <td><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+          <td>{{ t.start_date|mmm_yy }}</td>
+          <td>{{ t.notes or '—' }}</td>
+          <td><span class="badge badge-Cancelled">Cancelled</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No stopped/cancelled theses.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 4: Proposals ── #}
+<div id="tab-proposals" class="tab-content" data-tab-group="admin">
+  <div class="flex justify-between items-center mb-1">
+    <h2>All Proposals</h2>
+    <a href="{{ url_for('proposals_list') }}" class="btn btn-outline btn-sm">View All</a>
+  </div>
+  {% if proposals %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Status</th><th>Bids</th></tr>
+      </thead>
+      <tbody>
+        {% for p in proposals %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+          <td>{{ p.bid_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No proposals.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 5: Analytics ── #}
+<div id="tab-analytics" class="tab-content" data-tab-group="admin">
+
+  {# Faculty Effort - Ongoing #}
+  <h2>Faculty Effort — Ongoing Theses</h2>
+  {% if effort_ongoing %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-scroll">
+      <table class="effort-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Primary Sup</th><th>Add. Sup</th><th>Supervisor</th>
+            <th>Primary senza *</th><th>Add. senza *</th><th>Sup. senza *</th>
+            <th>#correlazioni</th><th>Effort</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set ns = namespace(tp=0, ta=0, ts=0, tps=0, tas=0, tss=0, tc=0, te=0) %}
+          {% for e in effort_ongoing %}
+          <tr>
+            <td>{{ e.name }}</td>
+            <td>{{ e.primary_sup }}</td><td>{{ e.additional_sup }}</td><td>{{ e.supervisor }}</td>
+            <td>{{ e.primary_senza }}</td><td>{{ e.additional_senza }}</td><td>{{ e.supervisor_senza }}</td>
+            <td>{{ e.correlazioni }}</td><td>{{ "%.2f"|format(e.effort) }}</td>
+          </tr>
+          {% set ns.tp = ns.tp + e.primary_sup %}
+          {% set ns.ta = ns.ta + e.additional_sup %}
+          {% set ns.ts = ns.ts + e.supervisor %}
+          {% set ns.tps = ns.tps + e.primary_senza %}
+          {% set ns.tas = ns.tas + e.additional_senza %}
+          {% set ns.tss = ns.tss + e.supervisor_senza %}
+          {% set ns.tc = ns.tc + e.correlazioni %}
+          {% set ns.te = ns.te + e.effort %}
+          {% endfor %}
+          <tr class="totals">
+            <td>Total</td>
+            <td>{{ ns.tp }}</td><td>{{ ns.ta }}</td><td>{{ ns.ts }}</td>
+            <td>{{ ns.tps }}</td><td>{{ ns.tas }}</td><td>{{ ns.tss }}</td>
+            <td>{{ ns.tc }}</td><td>{{ "%.2f"|format(ns.te) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state">No faculty effort data for ongoing theses.</div>
+  {% endif %}
+
+  {# Faculty Effort - Terminated #}
+  <h2 class="mt-1">Faculty Effort — Terminated Theses</h2>
+  {% if effort_terminated %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-scroll">
+      <table class="effort-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Primary Sup</th><th>Add. Sup</th><th>Supervisor</th>
+            <th>Primary senza *</th><th>Add. senza *</th><th>Sup. senza *</th>
+            <th>#correlazioni</th><th>Effort Past</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set ns = namespace(tp=0, ta=0, ts=0, te=0) %}
+          {% for e in effort_terminated %}
+          <tr>
+            <td>{{ e.name }}</td>
+            <td>{{ e.primary_sup }}</td><td>{{ e.additional_sup }}</td><td>{{ e.supervisor }}</td>
+            <td>{{ e.primary_senza }}</td><td>{{ e.additional_senza }}</td><td>{{ e.supervisor_senza }}</td>
+            <td>{{ e.correlazioni }}</td><td>{{ "%.2f"|format(e.effort) }}</td>
+          </tr>
+          {% set ns.tp = ns.tp + e.primary_sup %}
+          {% set ns.ta = ns.ta + e.additional_sup %}
+          {% set ns.ts = ns.ts + e.supervisor %}
+          {% set ns.te = ns.te + e.effort %}
+          {% endfor %}
+          <tr class="totals">
+            <td>Total</td>
+            <td>{{ ns.tp }}</td><td>{{ ns.ta }}</td><td>{{ ns.ts }}</td>
+            <td></td><td></td><td></td><td></td><td>{{ "%.2f"|format(ns.te) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state">No faculty effort data for terminated theses.</div>
+  {% endif %}
+
+  {# Topic Distribution #}
+  <div class="flex gap-md" style="flex-wrap:wrap; margin-top:1.5rem;">
+    <div style="flex:1; min-width:300px;">
+      <h2>Topic Distribution</h2>
+      {% if topic_dist %}
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table>
+          <thead><tr><th>Topic</th><th>Count</th></tr></thead>
+          <tbody>
+            {% for td in topic_dist %}
+            <tr><td>{{ td.primary_topic }}</td><td style="text-align:center;">{{ td.cnt }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card empty-state">No topic data.</div>
+      {% endif %}
+    </div>
+
+    {# Summary Statistics #}
+    <div style="flex:1; min-width:300px;">
+      <h2>Summary Statistics</h2>
+      <h3>Ongoing</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="value">{{ summary_ongoing.external_count }}</div>
+          <div class="pct">({{ summary_ongoing.external_pct }}%)</div>
+          <div class="desc">External</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">{{ summary_ongoing.challenging_count }}</div>
+          <div class="pct">({{ summary_ongoing.challenging_pct }}%)</div>
+          <div class="desc">With * (Challenging)</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">{{ summary_ongoing.not_challenging_count }}</div>
+          <div class="pct">({{ summary_ongoing.not_challenging_pct }}%)</div>
+          <div class="desc">Without *</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">{{ summary_ongoing.via_bidding }}</div>
+          <div class="desc">Via Bidding</div>
+        </div>
+      </div>
+      <h3 class="mt-1">Terminated</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="value">{{ summary_terminated.external_count }}</div>
+          <div class="pct">({{ summary_terminated.external_pct }}%)</div>
+          <div class="desc">External</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">{{ summary_terminated.challenging_count }}</div>
+          <div class="pct">({{ summary_terminated.challenging_pct }}%)</div>
+          <div class="desc">With * (Challenging)</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">{{ summary_terminated.not_challenging_count }}</div>
+          <div class="pct">({{ summary_terminated.not_challenging_pct }}%)</div>
+          <div class="desc">Without *</div>
+        </div>
+        <div class="summary-item">
+          <div class="value">{{ summary_terminated.via_bidding }}</div>
+          <div class="desc">Via Bidding</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

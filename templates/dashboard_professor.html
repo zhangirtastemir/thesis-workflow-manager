@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Professor Dashboard - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>Professor Dashboard</h1>
+
+{# ── Stats Cards ── #}
+<div class="grid-stats">
+  <div class="stat-card">
+    <div class="number">{{ stats.active_theses }}</div>
+    <div class="label">Active Theses</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ stats.proposals }}</div>
+    <div class="label">My Proposals</div>
+  </div>
+  <div class="stat-card">
+    <div class="number">{{ stats.bids }}</div>
+    <div class="label">Total Bids Received</div>
+  </div>
+  <div class="stat-card" style="border-color:var(--primary);">
+    <div class="number" style="color:var(--primary);">{{ stats.reviewer_count }}</div>
+    <div class="label">Reviewer Assignments</div>
+  </div>
+  {% if open_round %}
+  <div class="stat-card">
+    <div class="number">{{ proposals_in_round|length }}</div>
+    <div class="label">In Current Round</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if open_round %}
+<div class="flash success">
+  Active round: <strong>{{ open_round.name }}</strong> ({{ open_round.start_date }} – {{ open_round.end_date }})
+  <a href="{{ url_for('bidding_manage') }}" style="margin-left:1rem;">Manage Bidding &rarr;</a>
+</div>
+{% endif %}
+
+{# ── Tabs ── #}
+<div class="tabs" data-tab-group="prof">
+  <button class="tab-btn active" data-tab="tab-ongoing" onclick="switchTab('prof','tab-ongoing')">Ongoing ({{ ongoing|length }})</button>
+  <button class="tab-btn" data-tab="tab-terminated" onclick="switchTab('prof','tab-terminated')">Terminated ({{ terminated|length }})</button>
+  <button class="tab-btn" data-tab="tab-proposals" onclick="switchTab('prof','tab-proposals')">My Proposals ({{ proposals|length }})</button>
+  <button class="tab-btn" data-tab="tab-reviewer" onclick="switchTab('prof','tab-reviewer')">Reviewing ({{ reviewer_theses|length }})</button>
+  <button class="tab-btn" data-tab="tab-analytics" onclick="switchTab('prof','tab-analytics')">Analytics</button>
+</div>
+
+{# ── Tab 1: Ongoing Theses (Excel-like) ── #}
+<div id="tab-ongoing" class="tab-content active" data-tab-group="prof">
+  {% if ongoing %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>NEW/OLD</th><th>Candidate</th><th>Reviewer</th><th>Start</th><th>End?</th>
+            <th>3M*</th><th>Title</th><th>Add. Sup.</th>
+            <th>Challenging</th><th>External</th><th>Ext. Supervisor</th>
+            <th>Primary Topic</th><th>Secondary Topic</th><th>Abstract</th>
+            <th>Words</th><th>Duration</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in ongoing %}
+          <tr class="{{ 'row-new' if t.assignment_source == 'NEW' }}">
+            <td>
+              {% if t.assignment_source %}
+              <span class="badge badge-{{ t.assignment_source }}">{{ t.assignment_source }}</span>
+              {% endif %}
+            </td>
+            <td>{{ t.student_name }}</td>
+            <td>{{ t.reviewer_name or '—' }}</td>
+            <td>{{ t.start_date|mmm_yy }}</td>
+            <td>{{ t.expected_end|mmm_yy }}</td>
+            <td>
+              {% if t.start_date and t.three_month_review_done == 0 %}
+              <span class="flag-3m" title="3-month review pending">*</span>
+              {% endif %}
+            </td>
+            <td class="wrap-cell"><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+            <td>{{ t.additional_supervisor_name or '—' }}</td>
+            <td><span class="badge badge-{{ 'YES' if t.is_challenging else 'NO' }}">{{ 'YES' if t.is_challenging else 'NO' }}</span></td>
+            <td><span class="badge badge-{{ 'YES' if t.is_external else 'NO' }}">{{ 'YES' if t.is_external else 'NO' }}</span></td>
+            <td>{{ t.external_supervisor_name or '—' }}</td>
+            <td>{{ t.primary_topic or '—' }}</td>
+            <td>{{ t.secondary_topic or '—' }}</td>
+            <td class="abstract-preview">{{ (t.proposal_abstract or t.abstract or '—')[:100] }}</td>
+            <td>{{ (t.proposal_abstract or t.abstract or '')|word_count }}</td>
+            <td>{{ t.start_date|duration_months }}</td>
+            <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state">No ongoing theses.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 2: Terminated ── #}
+<div id="tab-terminated" class="tab-content" data-tab-group="prof">
+  {% if terminated %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Candidate</th><th>Start</th><th>End</th><th>Title</th>
+            <th>Challenging</th><th>External</th><th>Primary Topic</th>
+            <th>Duration (days)</th><th>Duration (months)</th><th>Notes</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in terminated %}
+          <tr>
+            <td>{{ t.student_name }}</td>
+            <td>{{ t.start_date|mmm_yy }}</td>
+            <td>{{ (t.terminated_at or t.updated_at)|mmm_yy }}</td>
+            <td class="wrap-cell"><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+            <td><span class="badge badge-{{ 'YES' if t.is_challenging else 'NO' }}">{{ 'YES' if t.is_challenging else 'NO' }}</span></td>
+            <td><span class="badge badge-{{ 'YES' if t.is_external else 'NO' }}">{{ 'YES' if t.is_external else 'NO' }}</span></td>
+            <td>{{ t.primary_topic or '—' }}</td>
+            <td>{{ t.start_date|duration_days(t.terminated_at or t.updated_at) }}</td>
+            <td>{{ t.start_date|duration_months(t.terminated_at or t.updated_at) }}</td>
+            <td>{{ t.notes or '—' }}</td>
+            <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state">No terminated theses.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 3: My Proposals ── #}
+<div id="tab-proposals" class="tab-content" data-tab-group="prof">
+  <div class="flex justify-between items-center mb-1">
+    <h2>My Proposals</h2>
+    <a href="{{ url_for('proposal_create') }}" class="btn btn-primary btn-sm">+ New Proposal</a>
+  </div>
+  {% if proposals %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Status</th><th>Bids</th><th>Updated</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for p in proposals %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+          <td>{{ p.bid_count }}</td>
+          <td class="text-muted text-sm">{{ p.updated_at[:10] }}</td>
+          <td>
+            {% if p.status == 'Draft' %}
+            <a href="{{ url_for('proposal_edit', proposal_id=p.id) }}" class="btn btn-outline btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('proposal_publish', proposal_id=p.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-success btn-sm">Publish</button>
+            </form>
+            {% elif p.status == 'Published' %}
+            <form method="POST" action="{{ url_for('proposal_archive', proposal_id=p.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-outline btn-sm">Archive</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No proposals yet. <a href="{{ url_for('proposal_create') }}">Create one</a>.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 4: Reviewer Assignments ── #}
+<div id="tab-reviewer" class="tab-content" data-tab-group="prof">
+  {% if reviewer_theses %}
+  <h2>Theses I Am Reviewing</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Student</th><th>Supervisor</th><th>Start</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for t in reviewer_theses %}
+        <tr>
+          <td><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></td>
+          <td>{{ t.student_name }}</td>
+          <td>{{ t.supervisor_name }}</td>
+          <td>{{ t.start_date|mmm_yy }}</td>
+          <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No theses assigned to you for review.</div>
+  {% endif %}
+</div>
+
+{# ── Tab 5: Analytics ── #}
+<div id="tab-analytics" class="tab-content" data-tab-group="prof">
+  {# Faculty effort #}
+  <h2>My Effort</h2>
+  {% if effort %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table class="effort-table">
+      <thead>
+        <tr>
+          <th>Metric</th><th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in effort %}
+        <tr><td>Primary Supervisor</td><td>{{ e.primary_sup }}</td></tr>
+        <tr><td>Additional Supervisor</td><td>{{ e.additional_sup }}</td></tr>
+        <tr><td>Total Supervisor</td><td>{{ e.supervisor }}</td></tr>
+        <tr><td>Primary senza *</td><td>{{ e.primary_senza }}</td></tr>
+        <tr><td>Additional senza *</td><td>{{ e.additional_senza }}</td></tr>
+        <tr><td>Supervisor senza *</td><td>{{ e.supervisor_senza }}</td></tr>
+        <tr><td>#correlazioni</td><td>{{ e.correlazioni }}</td></tr>
+        <tr class="totals"><td>Effort Score</td><td>{{ "%.2f"|format(e.effort) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No effort data.</div>
+  {% endif %}
+
+  {# Topic Distribution #}
+  {% if topic_dist %}
+  <h2 class="mt-1">My Topic Distribution</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead><tr><th>Topic</th><th style="text-align:center;">Count</th></tr></thead>
+      <tbody>
+        {% for td in topic_dist %}
+        <tr><td>{{ td.primary_topic }}</td><td style="text-align:center;">{{ td.cnt }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# Summary Stats #}
+  <h2 class="mt-1">Summary</h2>
+  <div class="summary-grid">
+    <div class="summary-item">
+      <div class="value">{{ summary.external_count }}</div>
+      <div class="pct">({{ summary.external_pct }}%)</div>
+      <div class="desc">External</div>
+    </div>
+    <div class="summary-item">
+      <div class="value">{{ summary.challenging_count }}</div>
+      <div class="pct">({{ summary.challenging_pct }}%)</div>
+      <div class="desc">Challenging (*)</div>
+    </div>
+    <div class="summary-item">
+      <div class="value">{{ summary.via_bidding }}</div>
+      <div class="desc">Via Bidding</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

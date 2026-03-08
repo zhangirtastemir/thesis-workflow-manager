@@ -163,6 +163,98 @@
     .badge-Approve          { background: #dcfce7; color: #166534; }
     .badge-Reject           { background: #fee2e2; color: #991b1b; }
     .badge-MinorRevision    { background: #fef3c7; color: #92400e; }
+    .badge-Admin            { background: #dc2626; color: #fff; }
+    .badge-Professor        { background: #2563eb; color: #fff; }
+    .badge-Student          { background: #16a34a; color: #fff; }
+    .badge-Published        { background: #d1fae5; color: #065f46; }
+    .badge-Archived         { background: #e5e7eb; color: #374151; }
+    .badge-Open             { background: #dcfce7; color: #166534; }
+    .badge-Closed           { background: #fee2e2; color: #991b1b; }
+    .badge-Pending          { background: #fef3c7; color: #92400e; }
+    .badge-Rejected         { background: #fee2e2; color: #991b1b; }
+    .badge-Cancelled        { background: #6b7280; color: #fff; }
+    .badge-YES              { background: #d1fae5; color: #065f46; }
+    .badge-NO               { background: #e5e7eb; color: #6b7280; }
+    .badge-NEW              { background: #fbbf24; color: #78350f; }
+    .badge-OLD              { background: #e5e7eb; color: #374151; }
+
+    /* Tab navigation */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid var(--gray-200);
+      margin-bottom: 1.25rem;
+      gap: 0;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      color: var(--gray-500);
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--gray-900); }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Three-month flag */
+    .flag-3m { color: var(--danger); font-weight: 700; font-size: 1.1rem; }
+
+    /* Row NEW highlight */
+    tr.row-new td { background: #fef9c3; }
+
+    /* Scrollable table wrapper */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .table-scroll table { min-width: 1200px; }
+    .table-scroll th, .table-scroll td { white-space: nowrap; }
+    .table-scroll td.wrap-cell { white-space: normal; max-width: 250px; }
+
+    /* Effort table */
+    .effort-table th, .effort-table td { text-align: center; padding: 0.4rem 0.5rem; font-size: 0.82rem; }
+    .effort-table th { font-size: 0.7rem; }
+    .effort-table td:first-child, .effort-table th:first-child { text-align: left; }
+    .effort-table tr.totals td { font-weight: 700; background: var(--gray-100); }
+
+    /* Summary stats grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .summary-item {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .summary-item .value { font-size: 1.3rem; font-weight: 700; }
+    .summary-item .pct { font-size: 0.85rem; color: var(--gray-500); }
+    .summary-item .desc { font-size: 0.75rem; color: var(--gray-500); margin-top: 0.2rem; }
+
+    /* Abstract expandable */
+    .abstract-preview {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .abstract-preview.expanded { white-space: normal; overflow: visible; }
 
     /* Late row highlight */
     tr.row-late td { background: #fef2f2; }
@@ -308,8 +400,35 @@
 <body>
   <nav>
     <span class="brand">Thesis Workflow</span>
+    {% if current_user %}
     <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">Dashboard</a>
+    {% if current_user.role != 'Student' %}
     <a href="{{ url_for('thesis_list') }}" class="{{ 'active' if request.endpoint in ('thesis_list','thesis_detail','thesis_create','thesis_edit') }}">Theses</a>
+    {% endif %}
+    <a href="{{ url_for('proposals_list') }}" class="{{ 'active' if request.endpoint in ('proposals_list','proposal_detail','proposal_create','proposal_edit') }}">Proposals</a>
+    {% if current_user.role == 'Student' %}
+    <a href="{{ url_for('student_bidding') }}" class="{{ 'active' if request.endpoint == 'student_bidding' }}">Bidding</a>
+    <a href="{{ url_for('my_bids') }}" class="{{ 'active' if request.endpoint == 'my_bids' }}">My Bids</a>
+    {% endif %}
+    {% if current_user.role == 'Professor' %}
+    <a href="{{ url_for('bidding_manage') }}" class="{{ 'active' if request.endpoint == 'bidding_manage' }}">Bidding</a>
+    {% endif %}
+    {% if current_user.role == 'Admin' %}
+    <a href="{{ url_for('bidding_governance') }}" class="{{ 'active' if request.endpoint in ('bidding_governance','round_create','rounds_list','admin_bidding') }}">Bidding Governance</a>
+    <a href="{{ url_for('admin_panel') }}" class="{{ 'active' if request.endpoint == 'admin_panel' }}">Admin</a>
+    {% endif %}
+    <span style="margin-left:auto; display:flex; align-items:center; gap:1rem;">
+      <span style="font-size:0.85rem; color:var(--gray-300);">
+        {{ current_user.name }}
+        <span class="badge badge-{{ current_user.role }}" style="margin-left:0.3rem;">{{ current_user.role }}</span>
+      </span>
+      <a href="{{ url_for('logout') }}" style="font-size:0.85rem;">Logout</a>
+    </span>
+    {% else %}
+    <span style="margin-left:auto;">
+      <a href="{{ url_for('login') }}">Login</a>
+    </span>
+    {% endif %}
   </nav>
   <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -331,6 +450,22 @@
     document.addEventListener('click', function(e) {
       if (e.target.classList.contains('modal-backdrop')) {
         e.target.classList.remove('show');
+      }
+    });
+  </script>
+  <script>
+    function switchTab(tabGroup, tabId) {
+      document.querySelectorAll('[data-tab-group="' + tabGroup + '"] .tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+      });
+      document.querySelectorAll('[data-tab-group="' + tabGroup + '"].tab-content').forEach(function(panel) {
+        panel.classList.toggle('active', panel.id === tabId);
+      });
+    }
+    // Abstract expand/collapse
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('abstract-preview')) {
+        e.target.classList.toggle('expanded');
       }
     });
   </script>

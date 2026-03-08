@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Bidding - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>Bidding Participation</h1>
+
+{% if not open_round and not existing_group %}
+<div class="card empty-state">
+  <p>No bidding round is currently open.</p>
+  <p class="text-sm text-muted mt-1">When a round opens, you can submit your 3 proposal choices here.</p>
+</div>
+
+{% elif existing_group %}
+{# ── Student already submitted ── #}
+<div class="flash {% if existing_group.status == 'Assigned' %}success{% elif existing_group.status == 'Rejected' %}danger{% else %}success{% endif %}">
+  {% if open_round %}
+  Round: <strong>{{ open_round.name }}</strong> ({{ open_round.start_date }} – {{ open_round.end_date }})
+  {% elif existing_group.round_name is defined and existing_group.round_name %}
+  Round: <strong>{{ existing_group.round_name }}</strong>
+  {% else %}
+  Latest Submission
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Your Submission
+    <span class="badge badge-{% if existing_group.status == 'Assigned' %}Accepted{% elif existing_group.status == 'Rejected' %}Rejected{% else %}Pending{% endif %}">
+      {{ existing_group.status }}
+    </span>
+  </h2>
+
+  {% if existing_group.status == 'Pending' %}
+  <p class="text-sm text-muted">Your choices are being reviewed by the admin. You will see the result here once a decision is made.</p>
+  {% elif existing_group.status == 'Assigned' %}
+  <p style="color:var(--success); font-weight:600;">You have been assigned a thesis! Check your dashboard for details.</p>
+  {% elif existing_group.status == 'Rejected' %}
+  <p style="color:var(--danger);">Your bidding participation was rejected. Contact the admin for more information.</p>
+  {% endif %}
+
+  <div style="margin-top:1rem;">
+    <h3>Your 3 Choices</h3>
+    <div class="card" style="padding:0; overflow:hidden; margin-top:0.5rem;">
+      <table>
+        <thead>
+          <tr><th>Rank</th><th>Proposal</th><th>Professor</th><th>Bid Status</th></tr>
+        </thead>
+        <tbody>
+          {% for b in existing_bids %}
+          <tr>
+            <td>
+              {% if b.rank == 1 %}
+              <span style="font-weight:700; color:var(--warning);">#1 (1st choice)</span>
+              {% elif b.rank == 2 %}
+              <span style="font-weight:600; color:var(--gray-500);">#2 (2nd choice)</span>
+              {% else %}
+              <span style="color:var(--gray-500);">#3 (3rd choice)</span>
+              {% endif %}
+            </td>
+            <td><a href="{{ url_for('proposal_detail', proposal_id=b.proposal_id) }}">{{ b.proposal_title }}</a></td>
+            <td>{{ b.professor_name }}</td>
+            <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;">
+    <h3>Your Motivation</h3>
+    <p class="text-sm" style="background:var(--gray-50); padding:0.75rem; border-radius:6px;">{{ existing_group.motivation_text }}</p>
+  </div>
+</div>
+
+{% else %}
+{# ── Submit new bid group ── #}
+<div class="flash success">
+  Round: <strong>{{ open_round.name }}</strong> ({{ open_round.start_date }} – {{ open_round.end_date }})
+  {% if open_round.proposal_collection_end and round_phase == 'proposal_collection' %}
+  <span class="badge badge-Draft" style="margin-left:0.5rem;">Collecting Proposals</span>
+  {% elif round_phase == 'bidding' %}
+  <span class="badge badge-Open" style="margin-left:0.5rem;">Bidding Open</span>
+  {% endif %}
+</div>
+
+{% if round_phase == 'proposal_collection' %}
+<div class="card" style="border-left:4px solid var(--warning);">
+  <h2>Bidding Opens Soon</h2>
+  <p>Proposals are currently being collected by professors. Bidding will open after <strong>{{ open_round.proposal_collection_end }}</strong>.</p>
+  <p class="text-sm text-muted mt-1">You can browse the available proposals below while waiting.</p>
+</div>
+
+{# Show available proposals in read-only mode #}
+{% if available %}
+<div class="section">
+  <h2>Available Proposals ({{ available|length }})</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for p in available %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td class="text-sm text-muted" style="max-width:400px;">{{ (p.abstract or '')[:120] }}{% if p.abstract and p.abstract|length > 120 %}...{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card empty-state">No proposals added to this round yet.</div>
+{% endif %}
+
+{% elif available|length < 3 %}
+<div class="card empty-state">
+  <p>Not enough proposals available to bid on (need at least 3, currently {{ available|length }}).</p>
+  <p class="text-sm text-muted mt-1">Wait for professors to add more proposals to this round.</p>
+</div>
+{% else %}
+<div class="card">
+  <h2>Select Your 3 Proposals</h2>
+  <p class="text-sm text-muted mb-2">Choose 3 proposals in order of preference. The admin will review your choices and assign one to you, or may reject your participation.</p>
+
+  <form method="POST">
+    <div class="form-group">
+      <label for="proposal_1">1st Choice (most preferred)</label>
+      <select id="proposal_1" name="proposal_1" class="form-control" required>
+        <option value="">-- Select proposal --</option>
+        {% for p in available %}
+        <option value="{{ p.id }}">{{ p.title }} ({{ p.professor_name }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="proposal_2">2nd Choice</label>
+      <select id="proposal_2" name="proposal_2" class="form-control" required>
+        <option value="">-- Select proposal --</option>
+        {% for p in available %}
+        <option value="{{ p.id }}">{{ p.title }} ({{ p.professor_name }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="proposal_3">3rd Choice (least preferred)</label>
+      <select id="proposal_3" name="proposal_3" class="form-control" required>
+        <option value="">-- Select proposal --</option>
+        {% for p in available %}
+        <option value="{{ p.id }}">{{ p.title }} ({{ p.professor_name }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="motivation_text">Motivation</label>
+      <textarea id="motivation_text" name="motivation_text" class="form-control"
+                rows="4" required placeholder="Explain why you are interested in these proposals and what makes you a good candidate..."></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" onclick="return validateChoices()">Submit My Choices</button>
+  </form>
+</div>
+
+{# ── Available Proposals Details ── #}
+<div class="section">
+  <h2>Available Proposals ({{ available|length }})</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for p in available %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td class="text-sm text-muted" style="max-width:400px;">{{ (p.abstract or '')[:120] }}{% if p.abstract and p.abstract|length > 120 %}...{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+function validateChoices() {
+  var p1 = document.getElementById('proposal_1').value;
+  var p2 = document.getElementById('proposal_2').value;
+  var p3 = document.getElementById('proposal_3').value;
+  if (!p1 || !p2 || !p3) {
+    alert('Please select all 3 proposals.');
+    return false;
+  }
+  if (p1 === p2 || p1 === p3 || p2 === p3) {
+    alert('Please select 3 different proposals.');
+    return false;
+  }
+  return confirm('Submit your 3 choices? This cannot be changed later.');
+}
+</script>
+{% endblock %}

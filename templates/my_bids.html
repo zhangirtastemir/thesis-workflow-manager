@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}My Bids - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>My Bids</h1>
+
+{% if open_round %}
+<div class="flash success">Bidding round "{{ open_round.name }}" is open ({{ open_round.start_date }} – {{ open_round.end_date }}).</div>
+{% else %}
+<div class="flash danger" style="background:#fef3c7; color:#92400e;">No bidding round is currently open.</div>
+{% endif %}
+
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if bids %}
+  <table>
+    <thead>
+      <tr>
+        <th>Proposal</th>
+        <th>Professor</th>
+        <th>Proposal Status</th>
+        <th>Round</th>
+        <th>Round Status</th>
+        <th>Bid Status</th>
+        <th>My Motivation</th>
+        <th>Submitted</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in bids %}
+      <tr>
+        <td><a href="{{ url_for('proposal_detail', proposal_id=b.proposal_id) }}">{{ b.proposal_title }}</a></td>
+        <td>{{ b.professor_name }}</td>
+        <td><span class="badge badge-{{ b.proposal_status }}">{{ b.proposal_status }}</span></td>
+        <td class="text-sm">{{ b.round_name }}</td>
+        <td><span class="badge badge-{{ b.round_status }}">{{ b.round_status }}</span></td>
+        <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+        <td class="text-sm">{{ b.motivation_text }}</td>
+        <td class="text-muted text-sm">{{ b.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">You haven't placed any bids yet. Browse <a href="{{ url_for('proposals_list') }}">published proposals</a> to get started.</div>
+  {% endif %}
+</div>
+{% endblock %}

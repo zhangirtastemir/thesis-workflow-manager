@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Bidding Governance - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>Bidding Governance</h1>
+
+{# ── Active Session Banner ── #}
+{% if open_round %}
+<div class="flash success">
+  Active session: <strong>{{ open_round.name }}</strong>
+  ({{ open_round.start_date }} – {{ open_round.end_date }})
+  {% if open_round.proposal_collection_end %}
+  &middot; Collection until {{ open_round.proposal_collection_end }}
+  {% endif %}
+  {% if round_phase == 'proposal_collection' %}
+  <span class="badge badge-Draft" style="margin-left:0.5rem;">Phase 1: Collecting Proposals</span>
+  {% elif round_phase == 'bidding' %}
+  <span class="badge badge-Open" style="margin-left:0.5rem;">Phase 2: Student Bidding</span>
+  {% endif %}
+</div>
+{% else %}
+<div class="flash" style="background:#fef3c7; color:#92400e;">
+  No session is currently active. Create or open a session below.
+</div>
+{% endif %}
+
+{# ── Tabs ── #}
+<div class="tabs" data-tab-group="gov">
+  <button class="tab-btn active" data-tab="tab-sessions" onclick="switchTab('gov','tab-sessions')">Sessions ({{ rounds|length }})</button>
+  <button class="tab-btn" data-tab="tab-proposals" onclick="switchTab('gov','tab-proposals')">Session Proposals{% if open_round %} ({{ in_round|length }}){% endif %}</button>
+  <button class="tab-btn" data-tab="tab-bidding" onclick="switchTab('gov','tab-bidding')">Bidding Overview{% if bid_groups %} ({{ bid_groups|length }}){% endif %}</button>
+  <button class="tab-btn" data-tab="tab-assignments" onclick="switchTab('gov','tab-assignments')">Assignments{% if closed_rounds %} ({{ closed_rounds|length }}){% endif %}</button>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# TAB 1 — Session / Round Management                                       #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<div id="tab-sessions" class="tab-content active" data-tab-group="gov">
+  <div class="flex justify-between items-center mb-1">
+    <h2>All Sessions</h2>
+    <a href="{{ url_for('round_create') }}" class="btn btn-primary btn-sm">+ New Session</a>
+  </div>
+
+  {% if rounds %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Start</th>
+          <th>Proposal Collection End</th>
+          <th>Bidding End</th>
+          <th>Phase / Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rounds %}
+        <tr{% if open_round and r.id == open_round.id %} style="background:#f0fdf4;"{% endif %}>
+          <td>{{ r.id }}</td>
+          <td>{{ r.name }}</td>
+          <td>{{ r.start_date }}</td>
+          <td>{{ r.proposal_collection_end or '—' }}</td>
+          <td>{{ r.end_date }}</td>
+          <td>
+            <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
+            {% if open_round and r.id == open_round.id %}
+              {% if round_phase == 'proposal_collection' %}
+              <span class="badge badge-Draft" style="margin-left:0.3rem;">Collecting</span>
+              {% elif round_phase == 'bidding' %}
+              <span class="badge badge-Open" style="margin-left:0.3rem;">Bidding</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td>
+            <div class="flex gap-sm">
+              {% if r.status == 'Planned' %}
+              <form method="POST" action="{{ url_for('round_open', round_id=r.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-success btn-sm">Open</button>
+              </form>
+              {% elif r.status == 'Open' %}
+              <form method="POST" action="{{ url_for('round_close', round_id=r.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-danger btn-sm">Close</button>
+              </form>
+              {% elif r.status == 'Closed' %}
+              <a href="{{ url_for('round_assignments', round_id=r.id) }}" class="btn btn-info btn-sm">Assignments</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No sessions yet. Create one to get started.</div>
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# TAB 2 — Proposal Collection / Session Proposals                          #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<div id="tab-proposals" class="tab-content" data-tab-group="gov">
+  {% if not open_round %}
+  <div class="card empty-state">No active session. Open a session to manage proposals.</div>
+  {% else %}
+
+  {# Proposals in current round #}
+  <h2>Proposals in "{{ open_round.name }}" <span class="badge badge-Open">{{ in_round|length }}</span></h2>
+  {% if in_round %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Status</th><th>Bids</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for p in in_round %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+          <td>{{ p.bid_count }}</td>
+          <td>
+            {% if p.bid_count == 0 %}
+            <form method="POST" action="{{ url_for('admin_bidding_remove', proposal_id=p.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+            {% else %}
+            <span class="text-sm text-muted">Has bids</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No proposals in this session yet. Add published proposals below.</div>
+  {% endif %}
+
+  {# Add proposals to round #}
+  {% if available %}
+  <div class="section">
+    <h2>Available Proposals to Add</h2>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Professor</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for p in available %}
+          <tr>
+            <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+            <td>{{ p.professor_name }}</td>
+            <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+            <td>
+              <form method="POST" action="{{ url_for('admin_bidding_add', proposal_id=p.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-success btn-sm">Add to Session</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% elif not in_round %}
+  {# no in_round and no available #}
+  {% else %}
+  <div class="section">
+    <div class="card empty-state">All published proposals are in this session or already assigned.</div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# TAB 3 — Bidding Overview                                                 #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<div id="tab-bidding" class="tab-content" data-tab-group="gov">
+  {% if not open_round %}
+  <div class="card empty-state">No active session. Open a session to see bidding activity.</div>
+  {% else %}
+
+  <h2>Bids in "{{ open_round.name }}"</h2>
+
+  {# Proposal interest summary #}
+  {% if in_round %}
+  <div class="card">
+    <h3>Proposal Interest</h3>
+    <div class="card" style="padding:0; overflow:hidden; margin-top:0.5rem;">
+      <table>
+        <thead>
+          <tr><th>Proposal</th><th>Professor</th><th style="text-align:center;">Bids</th></tr>
+        </thead>
+        <tbody>
+          {% for p in in_round %}
+          <tr>
+            <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+            <td>{{ p.professor_name }}</td>
+            <td style="text-align:center;">
+              {% if p.bid_count > 0 %}
+              <span class="badge badge-Open">{{ p.bid_count }}</span>
+              {% else %}
+              <span class="text-muted">0</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Student bid groups #}
+  {% if bid_groups %}
+  <div class="section">
+    <h3>Student Submissions <span class="badge badge-Open">{{ bid_groups|length }}</span></h3>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>Email</th><th>Choices</th><th>Status</th><th>Submitted</th></tr>
+        </thead>
+        <tbody>
+          {% for bg in bid_groups %}
+          <tr>
+            <td>{{ bg.student_name }}</td>
+            <td class="text-sm">{{ bg.student_email }}</td>
+            <td>{{ bg.bid_count }} proposals</td>
+            <td>
+              <span class="badge badge-{% if bg.status == 'Assigned' %}Accepted{% elif bg.status == 'Rejected' %}Rejected{% else %}Pending{% endif %}">
+                {{ bg.status }}
+              </span>
+            </td>
+            <td class="text-sm text-muted">{{ bg.created_at[:10] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state" style="margin-top:1rem;">No bids submitted in this session yet.</div>
+  {% endif %}
+
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# TAB 4 — Assignments / Outcomes                                           #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<div id="tab-assignments" class="tab-content" data-tab-group="gov">
+
+  {% if open_round %}
+  <div class="flash" style="background:#fef3c7; color:#92400e;">
+    The active session must be <strong>Closed</strong> before assignments can be made.
+    Close it from the Sessions tab first.
+  </div>
+  {% endif %}
+
+  {% if closed_rounds %}
+  <h2>Closed Sessions</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Dates</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for r in closed_rounds %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td class="text-sm">{{ r.start_date }} – {{ r.end_date }}</td>
+          <td><a href="{{ url_for('round_assignments', round_id=r.id) }}" class="btn btn-info btn-sm">View / Make Assignments</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No closed sessions yet. Close a session to start assigning theses.</div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

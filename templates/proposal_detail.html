@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ proposal.title }} - Thesis Workflow{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-2">
+  <div>
+    <a href="{{ url_for('proposals_list') }}" class="text-sm">&larr; Back to proposals</a>
+    <h1 style="margin-top:0.3rem;">{{ proposal.title }}</h1>
+  </div>
+  <div class="flex gap-sm">
+    {% if current_user.role in ('Professor', 'Admin') and proposal.created_by_professor_id == current_user.id and proposal.status == 'Draft' %}
+    <a href="{{ url_for('proposal_edit', proposal_id=proposal.id) }}" class="btn btn-outline btn-sm">Edit</a>
+    <form method="POST" action="{{ url_for('proposal_publish', proposal_id=proposal.id) }}" class="inline-form">
+      <button type="submit" class="btn btn-success btn-sm">Publish</button>
+    </form>
+    {% endif %}
+    {% if current_user.role in ('Professor', 'Admin') and proposal.created_by_professor_id == current_user.id and proposal.status == 'Published' %}
+    <form method="POST" action="{{ url_for('proposal_archive', proposal_id=proposal.id) }}" class="inline-form"
+          onsubmit="return confirm('Archive this proposal? Students will no longer be able to bid on it.');">
+      <button type="submit" class="btn btn-warning btn-sm">Archive</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Info Card ── #}
+<div class="card">
+  <div class="flex gap-md flex-wrap">
+    <div style="flex:1; min-width:280px;">
+      <p class="text-sm text-muted mb-1">Description</p>
+      <p>{{ proposal.description or "No description provided." }}</p>
+    </div>
+    <div style="min-width:220px;">
+      <p class="text-sm mb-1"><strong>Professor:</strong> {{ proposal.professor_name }} ({{ proposal.professor_email }})</p>
+      <p class="text-sm mb-1"><strong>Status:</strong> <span class="badge badge-{{ proposal.status }}">{{ proposal.status }}</span></p>
+      <p class="text-sm text-muted">Created: {{ proposal.created_at }}  |  Updated: {{ proposal.updated_at }}</p>
+    </div>
+  </div>
+</div>
+
+{# ── Assignment Outcome ── #}
+{% if assignment %}
+<div class="card" style="border-left: 4px solid var(--success);">
+  <h3>Assignment</h3>
+  <p class="text-sm">
+    Assigned to <strong>{{ assignment.student_name }}</strong> in round <strong>{{ assignment.round_name }}</strong>.
+    <a href="{{ url_for('thesis_detail', thesis_id=assignment.thesis_id) }}">View Thesis #{{ assignment.thesis_id }}</a>
+  </p>
+</div>
+{% endif %}
+
+{# ── Bid Form (Student only, Published proposal, Open round, not assigned) ── #}
+{% if current_user.role == 'Student' and proposal.status == 'Published' and not assignment %}
+<div class="card">
+  <h3>Submit Your Bid</h3>
+  {% if not open_round %}
+  <p class="text-sm text-muted">No bidding round is currently open. You cannot bid at this time.</p>
+  {% elif student_has_bid %}
+  <p class="text-sm text-muted">You have already submitted a bid for this proposal in this round.</p>
+  {% else %}
+  <form method="POST" action="{{ url_for('proposal_bid', proposal_id=proposal.id) }}">
+    <div class="form-group mt-1">
+      <label for="motivation_text">Motivation *</label>
+      <textarea id="motivation_text" name="motivation_text" class="form-control"
+                placeholder="Explain why you are interested in this proposal and what qualifies you..."
+                required style="min-height:100px;"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Submit Bid</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Bids (visible to proposal owner + admin), grouped by round ── #}
+{% if bids is defined and bids %}
+<div class="section">
+  <h2>Received Bids ({{ bids|length }})</h2>
+  {% set ns = namespace(current_round='') %}
+  {% for b in bids %}
+    {% if b.round_name != ns.current_round %}
+      {% if ns.current_round != '' %}
+        </tbody></table></div>
+      {% endif %}
+      {% set ns.current_round = b.round_name %}
+      <h3 style="margin-top:1rem;">{{ b.round_name }} <span class="badge badge-{{ b.round_status }}">{{ b.round_status }}</span></h3>
+      <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Email</th>
+            <th>Motivation</th>
+            <th>Bid Status</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+    {% endif %}
+        <tr>
+          <td>{{ b.student_name }}</td>
+          <td class="text-sm">{{ b.student_email }}</td>
+          <td class="text-sm">{{ b.motivation_text }}</td>
+          <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+          <td class="text-muted text-sm">{{ b.created_at }}</td>
+        </tr>
+  {% endfor %}
+        </tbody></table></div>
+</div>
+{% elif current_user.role in ('Professor', 'Admin') and proposal.created_by_professor_id == current_user.id %}
+<div class="section">
+  <h2>Received Bids</h2>
+  <div class="card empty-state">No bids received yet.</div>
+</div>
+{% endif %}
+
+{% endblock %}

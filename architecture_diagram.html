@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Snapshot</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --slate-950: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+    --blue-700: #1d4ed8;
+    --blue-600: #2563eb;
+    --blue-500: #3b82f6;
+    --blue-100: #dbeafe;
+    --blue-50: #eff6ff;
+    --teal-700: #0f766e;
+    --teal-600: #0d9488;
+    --teal-500: #14b8a6;
+    --teal-100: #ccfbf1;
+    --teal-50: #f0fdfa;
+    --paper: #fdfdfc;
+  }
+
+  body {
+    background: var(--paper);
+    font-family: 'Source Serif 4', Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--slate-950);
+  }
+
+  .page {
+    width: 1200px;
+    margin: 0 auto;
+    padding: 52px 48px 56px;
+    background: var(--paper);
+  }
+
+  /* Title */
+  .title-block {
+    text-align: center;
+    margin-bottom: 44px;
+  }
+
+  .title-block h1 {
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--slate-950);
+    line-height: 1.3;
+  }
+
+  .title-block::after {
+    content: '';
+    display: block;
+    width: 64px;
+    height: 2px;
+    background: var(--slate-800);
+    margin: 18px auto 0;
+  }
+
+  /* Two columns */
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 64px 1fr;
+    gap: 0;
+    align-items: start;
+  }
+
+  .divider {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    min-height: 100%;
+    position: relative;
+  }
+
+  .divider::after {
+    content: '';
+    width: 1px;
+    background: var(--slate-200);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Column header */
+  .col-header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 14px 28px;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .col-header.blue {
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+  }
+
+  .col-header.teal {
+    background: var(--teal-50);
+    border: 1px solid var(--teal-100);
+  }
+
+  .col-header .case-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .col-header.blue .case-label { color: var(--blue-600); }
+  .col-header.teal .case-label { color: var(--teal-600); }
+
+  .col-header h2 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--slate-800);
+  }
+
+  /* Stack */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  /* Layer box */
+  .layer {
+    width: 100%;
+    text-align: center;
+    padding: 16px 20px;
+    border-radius: 5px;
+    position: relative;
+    border: 1px solid;
+  }
+
+  .layer .layer-label {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--slate-800);
+    line-height: 1.3;
+  }
+
+  .layer .layer-tech {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--slate-500);
+    margin-top: 3px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Blue layers */
+  .layer.blue-1 { background: var(--blue-50); border-color: var(--blue-100); }
+  .layer.blue-2 { background: #e8f0fe; border-color: #c5d5f8; }
+  .layer.blue-3 { background: #d6e4fd; border-color: #aec8f6; }
+  .layer.blue-4 { background: #c3d7fb; border-color: #93b4f0; }
+  .layer.blue-5 { background: #b0c9f9; border-color: #7da3ec; }
+
+  /* Teal layers */
+  .layer.teal-1 { background: var(--teal-50); border-color: var(--teal-100); }
+  .layer.teal-2 { background: #e0f7f3; border-color: #b2ebe0; }
+  .layer.teal-3 { background: #c8f0e8; border-color: #8edccc; }
+  .layer.teal-4 { background: #b0e8dd; border-color: #6dcdb8; }
+  .layer.teal-5 { background: #98e0d2; border-color: #52bfa7; }
+
+  /* Arrow between layers */
+  .arrow {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0;
+    color: var(--slate-400);
+  }
+
+  .arrow svg {
+    display: block;
+  }
+
+  /* Footer characteristics */
+  .characteristics {
+    margin-top: 44px;
+    padding: 20px 28px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+  }
+
+  .characteristics h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-700);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .characteristics ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 40px;
+  }
+
+  .characteristics li {
+    font-size: 13.5px;
+    color: var(--slate-600);
+    padding-left: 16px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .characteristics li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--slate-300);
+  }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="title-block">
+    <h1>Architecture Snapshot of the Generated Systems</h1>
+  </div>
+
+  <div class="columns">
+
+    <!-- ── CASE STUDY 1 ── -->
+    <div class="column">
+      <div class="col-header blue">
+        <div class="case-label">Case Study 1</div>
+        <h2>Catalogue Web Application</h2>
+      </div>
+
+      <div class="stack">
+        <div class="layer blue-1">
+          <div class="layer-label">User Browser</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer blue-2">
+          <div class="layer-label">Server-Rendered HTML UI</div>
+          <div class="layer-tech">HTML / CSS / JavaScript</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer blue-3">
+          <div class="layer-label">Express Application</div>
+          <div class="layer-tech">Node.js / Express.js</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer blue-4">
+          <div class="layer-label">Application Logic</div>
+          <div class="layer-tech">Routes / Controllers / Middleware</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer blue-5">
+          <div class="layer-label">SQLite Database</div>
+          <div class="layer-tech">Relational Persistence</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- ── CASE STUDY 2 ── -->
+    <div class="column">
+      <div class="col-header teal">
+        <div class="case-label">Case Study 2</div>
+        <h2>Thesis Management System</h2>
+      </div>
+
+      <div class="stack">
+        <div class="layer teal-1">
+          <div class="layer-label">User Browser</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer teal-2">
+          <div class="layer-label">Server-Rendered HTML UI</div>
+          <div class="layer-tech">HTML / CSS / Jinja2 Templates</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer teal-3">
+          <div class="layer-label">Flask Application</div>
+          <div class="layer-tech">Python / Flask</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer teal-4">
+          <div class="layer-label">Application Logic</div>
+          <div class="layer-tech">Routes / Decorators / Helpers</div>
+        </div>
+
+        <div class="arrow">
+          <svg width="20" height="24" viewBox="0 0 20 24"><path d="M10 0 L10 18" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 14 L10 20 L14 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="layer teal-5">
+          <div class="layer-label">SQLite Database</div>
+          <div class="layer-tech">Relational Persistence</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Common characteristics -->
+  <div class="characteristics">
+    <h3>Common Architectural Characteristics</h3>
+    <ul>
+      <li>Monolithic application structure</li>
+      <li>Server-side rendering</li>
+      <li>Lightweight web framework</li>
+      <li>Relational persistence via SQLite</li>
+      <li>No explicit architectural constraints defined by the developer</li>
+    </ul>
+  </div>
+
+</div>
+
+</body>
+</html>

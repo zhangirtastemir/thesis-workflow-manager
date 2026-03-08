@@ -138,6 +138,29 @@
   </form>
 </div>
 
+{# ── Assign Professor Reviewer (Admin only, Part B) ── #}
+{% if current_user and current_user.role == 'Admin' %}
+<div class="card">
+  <h3>Assign Professor Reviewer</h3>
+  {% if prof_reviewer %}
+  <p class="text-sm mb-1">Current reviewer: <strong>{{ prof_reviewer.name }}</strong> ({{ prof_reviewer.email }})</p>
+  {% endif %}
+  <form method="POST" action="{{ url_for('thesis_assign_professor_reviewer', thesis_id=thesis.thesis_id) }}" class="flex gap-sm items-center mt-1">
+    <select name="reviewer_id" class="form-control" style="max-width:350px;">
+      <option value="">-- No Reviewer --</option>
+      {% for p in professors %}
+      <option value="{{ p.id }}"
+        {{ 'selected' if thesis.reviewer_id is defined and thesis.reviewer_id == p.id }}>
+        {{ p.name }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Assign Reviewer</button>
+  </form>
+  <p class="text-sm text-muted mt-1">The reviewer must be different from the supervisor and additional supervisor.</p>
+</div>
+{% endif %}
+
 {# ── Committee ── #}
 <div class="section">
   <h2>Committee Review</h2>

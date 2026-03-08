@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit Proposal" if proposal else "New Proposal" }} - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>{{ "Edit Proposal" if proposal else "New Proposal" }}</h1>
+
+<div class="card" style="max-width:600px;">
+  <form method="POST">
+    <div class="form-group">
+      <label for="title">Title *</label>
+      <input type="text" id="title" name="title" class="form-control"
+             value="{{ proposal.title if proposal else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea id="description" name="description" class="form-control"
+                style="min-height:120px;">{{ proposal.description if proposal else '' }}</textarea>
+    </div>
+    <div class="flex gap-sm">
+      <button type="submit" class="btn btn-primary">{{ "Update" if proposal else "Create" }}</button>
+      <a href="{{ url_for('proposal_detail', proposal_id=proposal.id) if proposal else url_for('proposals_list') }}"
+         class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

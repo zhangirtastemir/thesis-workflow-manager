@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Proposals - Thesis Workflow{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-2">
+  <h1>Proposals</h1>
+  {% if current_user.role in ('Professor', 'Admin') %}
+  <a href="{{ url_for('proposal_create') }}" class="btn btn-primary">+ New Proposal</a>
+  {% endif %}
+</div>
+
+{% if open_round %}
+<div class="flash success">Bidding round "{{ open_round.name }}" is currently open ({{ open_round.start_date }} – {{ open_round.end_date }}).</div>
+{% else %}
+<div class="flash danger" style="background:#fef3c7; color:#92400e;">No bidding round is currently open.</div>
+{% endif %}
+
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if proposals %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Professor</th>
+        <th>Status</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in proposals %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+        <td>{{ p.professor_name }}</td>
+        <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+        <td class="text-muted text-sm">{{ p.updated_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No proposals found.</div>
+  {% endif %}
+</div>
+{% endblock %}

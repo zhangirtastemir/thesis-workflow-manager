@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>My Dashboard</h1>
+
+{# ── My Thesis (assigned result) ── #}
+<div class="section">
+  <h2>My Thesis</h2>
+  {% if my_theses %}
+  {% for t in my_theses %}
+  <div class="card" style="border-left:4px solid var(--success);">
+    <h3><a href="{{ url_for('thesis_detail', thesis_id=t.thesis_id) }}">{{ t.title }}</a></h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:0.75rem; margin-top:0.75rem;">
+      <div>
+        <span class="text-sm text-muted">Status</span><br>
+        <span class="badge badge-{{ t.status }}">{{ t.status }}</span>
+      </div>
+      <div>
+        <span class="text-sm text-muted">Supervisor</span><br>
+        <strong>{{ t.supervisor_name }}</strong>
+        {% if t.supervisor_email %}<br><span class="text-sm text-muted">{{ t.supervisor_email }}</span>{% endif %}
+      </div>
+      {% if t.reviewer_name %}
+      <div>
+        <span class="text-sm text-muted">Reviewer</span><br>
+        <strong>{{ t.reviewer_name }}</strong>
+      </div>
+      {% endif %}
+      {% if t.additional_supervisor_name %}
+      <div>
+        <span class="text-sm text-muted">Additional Supervisor</span><br>
+        <strong>{{ t.additional_supervisor_name }}</strong>
+      </div>
+      {% endif %}
+      {% if t.start_date %}
+      <div>
+        <span class="text-sm text-muted">Timeline</span><br>
+        <span class="text-sm">Start: {{ t.start_date|mmm_yy }}</span>
+        {% if t.expected_end %}<br><span class="text-sm">Expected End: {{ t.expected_end|mmm_yy }}</span>{% endif %}
+        {% if t.start_date and t.three_month_review_done == 0 %}
+        <br><span class="flag-3m text-sm">3-month review pending *</span>
+        {% elif t.three_month_review_done %}
+        <br><span class="text-sm" style="color:var(--success);">3-month review done</span>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if t.is_challenging %}
+      <div>
+        <span class="text-sm text-muted">Challenging</span><br>
+        <span class="badge badge-YES">YES</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="card empty-state">No thesis assigned yet. Submit your bidding choices to participate!</div>
+  {% endif %}
+</div>
+
+{# ── Bidding Status ── #}
+{% if bid_group %}
+<div class="section">
+  <h2>Bidding Result</h2>
+  <div class="card" style="border-left:4px solid {% if bid_group.status == 'Assigned' %}var(--success){% elif bid_group.status == 'Rejected' %}var(--danger){% else %}var(--warning){% endif %};">
+    <div class="flex justify-between items-center">
+      <h3>
+        Your Bidding Submission
+        <span class="badge badge-{% if bid_group.status == 'Assigned' %}Accepted{% elif bid_group.status == 'Rejected' %}Rejected{% else %}Pending{% endif %}">
+          {{ bid_group.status }}
+        </span>
+      </h3>
+      <a href="{{ url_for('student_bidding') }}" class="btn btn-outline btn-sm">View Details</a>
+    </div>
+    {% if bid_group.status == 'Assigned' %}
+    <p style="color:var(--success); margin-top:0.5rem;">You have been assigned a thesis! See "My Thesis" above.</p>
+    {% elif bid_group.status == 'Rejected' %}
+    <p style="color:var(--danger); margin-top:0.5rem;">Your bidding participation was rejected. Contact the admin for more details.</p>
+    {% else %}
+    <p class="text-sm text-muted" style="margin-top:0.5rem;">Your choices are being reviewed by the admin.</p>
+    {% endif %}
+
+    <table style="margin-top:0.75rem;">
+      <thead>
+        <tr><th>Rank</th><th>Proposal</th><th>Professor</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for b in bid_group_bids %}
+        <tr{% if b.status == 'Accepted' %} style="background:#dcfce7;"{% endif %}>
+          <td>
+            {% if b.rank == 1 %}<strong>#1</strong>
+            {% elif b.rank == 2 %}#2
+            {% else %}#3
+            {% endif %}
+          </td>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=b.proposal_id) }}">{{ b.proposal_title }}</a></td>
+          <td>{{ b.professor_name }}</td>
+          <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── My Bids History ── #}
+<div class="section">
+  <div class="flex justify-between items-center mb-1">
+    <h2>My Bids History</h2>
+    <a href="{{ url_for('my_bids') }}" class="btn btn-outline btn-sm">View All</a>
+  </div>
+  {% if bids %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Proposal</th><th>Professor</th><th>Round</th><th>Rank</th><th>Bid Status</th></tr>
+      </thead>
+      <tbody>
+        {% for b in bids %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=b.proposal_id) }}">{{ b.proposal_title }}</a></td>
+          <td>{{ b.professor_name }}</td>
+          <td class="text-sm">{{ b.round_name }}</td>
+          <td>{% if b.rank %}#{{ b.rank }}{% else %}—{% endif %}</td>
+          <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No bids placed yet. <a href="{{ url_for('student_bidding') }}">Go to Bidding</a> to submit your choices.</div>
+  {% endif %}
+</div>
+
+{# ── Available Proposals (quick view) ── #}
+{% if open_round and not bid_group %}
+<div class="section">
+  <div class="flex justify-between items-center mb-1">
+    <h2>Available Proposals</h2>
+    <a href="{{ url_for('student_bidding') }}" class="btn btn-primary btn-sm">Go to Bidding</a>
+  </div>
+  {% if round_phase == 'proposal_collection' %}
+  <div class="flash" style="background:#fef3c7; color:#92400e;">
+    Round "{{ open_round.name }}" — Proposals are being collected. Bidding opens after {{ open_round.proposal_collection_end }}.
+  </div>
+  {% else %}
+  <div class="flash success">Bidding round "{{ open_round.name }}" is open ({{ open_round.start_date }} – {{ open_round.end_date }}).</div>
+  {% endif %}
+  {% if available %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Abstract</th></tr>
+      </thead>
+      <tbody>
+        {% for p in available %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td class="text-sm text-muted" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ (p.abstract or '')[:80] }}{% if p.abstract and p.abstract|length > 80 %}...{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No proposals available for bidding right now.</div>
+  {% endif %}
+</div>
+{% elif not open_round and not bid_group %}
+<div class="section">
+  <h2>Bidding</h2>
+  <div class="card empty-state">No bidding round is currently open.</div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Assignments: {{ round.name }} - Thesis Workflow{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-2">
+  <div>
+    <a href="{{ url_for('bidding_governance') }}" class="text-sm">&larr; Back to rounds</a>
+    <h1 style="margin-top:0.3rem;">Assignments: {{ round.name }}</h1>
+  </div>
+  <span class="badge badge-{{ round.status }}">{{ round.status }}</span>
+</div>
+
+{% if round.status != 'Closed' %}
+<div class="flash danger" style="background:#fef3c7; color:#92400e;">
+  The round must be Closed before assignments can be made.
+  <a href="{{ url_for('bidding_governance') }}">Go to Rounds</a> to close it first.
+</div>
+{% endif %}
+
+{# ── Student Bid Groups (new workflow) ── #}
+{% if student_data %}
+<div class="section">
+  <h2>Student Bidding Submissions <span class="badge badge-Open">{{ student_data|length }}</span></h2>
+
+  {% for item in student_data %}
+  <div class="card" style="border-left:4px solid {% if item.bid_group.status == 'Assigned' %}var(--success){% elif item.bid_group.status == 'Rejected' %}var(--danger){% else %}var(--warning){% endif %};">
+    <div class="flex justify-between items-center mb-1">
+      <h3>{{ item.bid_group.student_name }}
+        <span class="badge badge-{% if item.bid_group.status == 'Assigned' %}Accepted{% elif item.bid_group.status == 'Rejected' %}Rejected{% else %}Pending{% endif %}">
+          {{ item.bid_group.status }}
+        </span>
+      </h3>
+      <span class="text-sm text-muted">{{ item.bid_group.student_email }} &middot; {{ item.bid_group.created_at[:10] }}</span>
+    </div>
+
+    {% if item.assignment %}
+    <div class="flash success" style="margin-bottom:0.5rem;">
+      Assigned: <strong>{{ item.assignment.proposal_title }}</strong> &mdash;
+      <a href="{{ url_for('thesis_detail', thesis_id=item.assignment.thesis_id) }}">View Thesis #{{ item.assignment.thesis_id }}</a>
+    </div>
+    {% endif %}
+
+    {# Student's motivation #}
+    <div style="background:var(--gray-50); padding:0.6rem 0.75rem; border-radius:6px; margin-bottom:0.75rem;">
+      <span class="text-sm" style="font-weight:600;">Motivation:</span>
+      <span class="text-sm">{{ item.bid_group.motivation_text }}</span>
+    </div>
+
+    {# Student's 3 choices #}
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Proposal</th>
+          <th>Professor</th>
+          <th>Bid Status</th>
+          {% if round.status == 'Closed' and item.bid_group.status == 'Pending' %}
+          <th>Action</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in item.bids %}
+        <tr{% if b.rank == 1 and item.bid_group.status == 'Pending' %} style="background:#fef3c7;"{% endif %}>
+          <td>
+            {% if b.rank == 1 %}
+            <span style="font-weight:700; color:var(--warning);">#1</span>
+            {% elif b.rank == 2 %}
+            <span style="font-weight:600;">#2</span>
+            {% else %}
+            <span>#3</span>
+            {% endif %}
+          </td>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=b.proposal_id) }}">{{ b.proposal_title }}</a></td>
+          <td>{{ b.professor_name }}</td>
+          <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+          {% if round.status == 'Closed' and item.bid_group.status == 'Pending' %}
+          <td>
+            <form method="POST" action="{{ url_for('round_assign', round_id=round.id, proposal_id=b.proposal_id) }}" class="inline-form"
+                  onsubmit="return confirm('Assign \'{{ b.proposal_title }}\' to {{ item.bid_group.student_name }}? This will create a thesis.');">
+              <input type="hidden" name="bid_id" value="{{ b.id }}">
+              <button type="submit" class="btn btn-success btn-sm">Assign This</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if round.status == 'Closed' and item.bid_group.status == 'Pending' %}
+    <div style="margin-top:0.75rem; text-align:right;">
+      <form method="POST" action="{{ url_for('round_reject_group', round_id=round.id, bid_group_id=item.bid_group.id) }}" class="inline-form"
+            onsubmit="return confirm('Reject ALL bids from {{ item.bid_group.student_name }}? They will not receive any thesis.');">
+        <button type="submit" class="btn btn-danger btn-sm">Reject All Bids</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Legacy per-proposal view (for old bids without bid_groups) ── #}
+{% if proposal_data %}
+<div class="section">
+  <h2>Individual Bids (Legacy)</h2>
+  {% for item in proposal_data %}
+  <div class="card">
+    <div class="flex justify-between items-center mb-1">
+      <h3><a href="{{ url_for('proposal_detail', proposal_id=item.proposal.id) }}">{{ item.proposal.title }}</a></h3>
+      <span class="text-sm text-muted">by {{ item.proposal.professor_name }}</span>
+    </div>
+
+    {% if item.assignment %}
+    <div class="flash success" style="margin-bottom:0.5rem;">
+      Assigned to <strong>{{ item.assignment.student_name }}</strong> &mdash;
+      <a href="{{ url_for('thesis_detail', thesis_id=item.assignment.thesis_id) }}">View Thesis #{{ item.assignment.thesis_id }}</a>
+    </div>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th><th>Email</th><th>Motivation</th><th>Status</th>
+          {% if round.status == 'Closed' and not item.assignment %}
+          <th>Action</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in item.bids %}
+        <tr{% if b.id == item.recommended_bid_id and not item.assignment %} style="background:#fef3c7;"{% endif %}>
+          <td>{{ b.student_name }}</td>
+          <td class="text-sm">{{ b.student_email }}</td>
+          <td class="text-sm">{{ b.motivation_text }}</td>
+          <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+          {% if round.status == 'Closed' and not item.assignment %}
+          <td>
+            <form method="POST" action="{{ url_for('round_assign', round_id=round.id, proposal_id=item.proposal.id) }}" class="inline-form"
+                  onsubmit="return confirm('Assign this proposal to {{ b.student_name }}?');">
+              <input type="hidden" name="bid_id" value="{{ b.id }}">
+              <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not student_data and not proposal_data %}
+<div class="card empty-state">No bids were placed in this round.</div>
+{% endif %}
+
+{% endblock %}

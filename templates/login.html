@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Login - Thesis Workflow{% endblock %}
+{% block content %}
+<div style="max-width:420px; margin:3rem auto;">
+  <div class="card">
+    <h1 style="text-align:center; margin-bottom:1.5rem;">Login</h1>
+    <form method="POST">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" class="form-control"
+               placeholder="you@university.edu" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" class="form-control"
+               placeholder="Enter password" required>
+      </div>
+      <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+        <input type="checkbox" id="remember" name="remember" value="1">
+        <label for="remember" style="margin:0; font-weight:400;">Remember me</label>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log In</button>
+    </form>
+    <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--gray-200);">
+      <p class="text-sm text-muted" style="text-align:center; margin-bottom:0.75rem;">Quick Login (Demo)</p>
+      <div style="display:flex; flex-direction:column; gap:0.4rem;">
+        {% for u in users %}
+        <button onclick="quickLogin('{{ u.email }}')"
+                class="btn btn-outline btn-sm" style="justify-content:space-between;">
+          <span>{{ u.name }}</span>
+          <span class="badge badge-{{ u.role }}">{{ u.role }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <p class="text-sm text-muted" style="text-align:center; margin-top:1rem;">
+    Demo password: <code>password123</code>
+  </p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function quickLogin(email) {
+  document.getElementById('email').value = email;
+  document.getElementById('password').value = 'password123';
+  document.querySelector('form').submit();
+}
+</script>
+{% endblock %}

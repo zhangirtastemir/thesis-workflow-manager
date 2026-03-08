@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}New Bidding Round - Thesis Workflow{% endblock %}
+{% block content %}
+<h1>New Bidding Round</h1>
+
+<div class="card" style="max-width:500px;">
+  <form method="POST">
+    <div class="form-group">
+      <label for="name">Round Name *</label>
+      <input type="text" id="name" name="name" class="form-control"
+             placeholder="e.g. Spring 2026 Bidding Round" required>
+    </div>
+    <div class="form-group">
+      <label for="start_date">Start Date *</label>
+      <input type="date" id="start_date" name="start_date" class="form-control" required>
+    </div>
+    <div class="form-group">
+      <label for="end_date">End Date *</label>
+      <input type="date" id="end_date" name="end_date" class="form-control" required>
+    </div>
+    <div class="form-group">
+      <label for="proposal_collection_end">Proposal Collection End Date</label>
+      <input type="date" id="proposal_collection_end" name="proposal_collection_end" class="form-control">
+      <span class="text-sm text-muted">Optional. Phase 1 (professors add proposals) ends on this date. Phase 2 (student bidding) starts the next day.</span>
+    </div>
+    <div class="flex gap-sm">
+      <button type="submit" class="btn btn-primary">Create Round</button>
+      <a href="{{ url_for('bidding_governance') }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

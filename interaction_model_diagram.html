@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iterative Human–AI Development Interaction Model</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --slate-950: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+    --amber-600: #d97706;
+    --amber-100: #fef3c7;
+    --amber-50: #fffbeb;
+    --indigo-700: #4338ca;
+    --indigo-600: #4f46e5;
+    --indigo-500: #6366f1;
+    --indigo-100: #e0e7ff;
+    --indigo-50: #eef2ff;
+    --emerald-700: #047857;
+    --emerald-600: #059669;
+    --emerald-100: #d1fae5;
+    --emerald-50: #ecfdf5;
+    --paper: #fdfdfc;
+  }
+
+  body {
+    background: var(--paper);
+    font-family: 'Source Serif 4', Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--slate-950);
+  }
+
+  .page {
+    width: 900px;
+    margin: 0 auto;
+    padding: 52px 64px 56px;
+    background: var(--paper);
+  }
+
+  /* Title */
+  .title-block {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .title-block h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--slate-950);
+    line-height: 1.35;
+  }
+
+  .title-block::after {
+    content: '';
+    display: block;
+    width: 56px;
+    height: 2px;
+    background: var(--slate-800);
+    margin: 16px auto 0;
+  }
+
+  /* Flow */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* Step box */
+  .step {
+    width: 100%;
+    max-width: 560px;
+    padding: 18px 28px;
+    border-radius: 6px;
+    border: 1px solid;
+    text-align: center;
+    position: relative;
+  }
+
+  .step .step-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .step .step-label {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--slate-800);
+    line-height: 1.35;
+  }
+
+  .step .step-detail {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--slate-500);
+    margin-top: 4px;
+    letter-spacing: 0.01em;
+  }
+
+  /* Color variants */
+  .step.human {
+    background: var(--amber-50);
+    border-color: var(--amber-100);
+  }
+  .step.human .step-number { color: var(--amber-600); }
+
+  .step.ai {
+    background: var(--indigo-50);
+    border-color: var(--indigo-100);
+  }
+  .step.ai .step-number { color: var(--indigo-600); }
+
+  .step.validate {
+    background: var(--emerald-50);
+    border-color: var(--emerald-100);
+  }
+  .step.validate .step-number { color: var(--emerald-600); }
+
+  /* Actor labels on left side */
+  .step-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 720px;
+    gap: 0;
+  }
+
+  .actor-label {
+    width: 80px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 20px;
+  }
+
+  .actor-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .actor-tag.human-tag {
+    background: var(--amber-100);
+    color: var(--amber-600);
+  }
+
+  .actor-tag.ai-tag {
+    background: var(--indigo-100);
+    color: var(--indigo-700);
+  }
+
+  .actor-tag.both-tag {
+    background: var(--emerald-100);
+    color: var(--emerald-700);
+  }
+
+  .step-row .step {
+    flex: 1;
+  }
+
+  /* Arrow between steps */
+  .arrow {
+    display: flex;
+    justify-content: center;
+    padding: 5px 0;
+    margin-left: 80px;
+  }
+
+  .arrow svg { display: block; }
+
+  /* Feedback loop */
+  .feedback-loop {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 720px;
+    margin-top: 8px;
+    position: relative;
+  }
+
+  .feedback-box {
+    margin-left: 80px;
+    flex: 1;
+    max-width: 560px;
+    position: relative;
+  }
+
+  .loop-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 0 4px;
+    position: relative;
+  }
+
+  .loop-container {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    margin-left: 80px;
+  }
+
+  .loop-line {
+    position: relative;
+    height: 56px;
+    width: 100%;
+  }
+
+  .loop-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+    margin-left: 80px;
+  }
+
+  .loop-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--slate-500);
+    letter-spacing: 0.04em;
+    font-style: italic;
+  }
+
+  /* Legend */
+  .legend-bar {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--slate-200);
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--slate-600);
+  }
+
+  .legend-swatch {
+    width: 28px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid;
+    flex-shrink: 0;
+  }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="title-block">
+    <h1>Iterative Human–AI Development Interaction Model</h1>
+  </div>
+
+  <div class="flow">
+
+    <!-- Step 1 -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag human-tag">Human</span></div>
+      <div class="step human">
+        <span class="step-number">Step 1</span>
+        <div class="step-label">Stakeholder / Supervisor Feedback</div>
+        <div class="step-detail">Domain requirements, change requests, quality observations</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0 L10 22" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 18 L10 24 L14 18" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag human-tag">Human</span></div>
+      <div class="step human">
+        <span class="step-number">Step 2</span>
+        <div class="step-label">Requirement Clarification / Evolution Request</div>
+        <div class="step-detail">Formalized as a structured or free-form description</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0 L10 22" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 18 L10 24 L14 18" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag human-tag">Human</span></div>
+      <div class="step human">
+        <span class="step-number">Step 3</span>
+        <div class="step-label">Developer Formulates Natural-Language Prompt</div>
+        <div class="step-detail">Translates requirement into actionable instruction for the AI agent</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0 L10 22" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 18 L10 24 L14 18" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag ai-tag">AI</span></div>
+      <div class="step ai">
+        <span class="step-number">Step 4</span>
+        <div class="step-label">Claude Code Processes Request</div>
+        <div class="step-detail">Interprets intent, plans changes, resolves dependencies</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0 L10 22" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 18 L10 24 L14 18" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag ai-tag">AI</span></div>
+      <div class="step ai">
+        <span class="step-number">Step 5</span>
+        <div class="step-label">Generates / Modifies Application Across Layers</div>
+        <div class="step-detail">Database schema, backend logic, UI templates, workflow rules</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0 L10 22" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 18 L10 24 L14 18" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag both-tag">Both</span></div>
+      <div class="step validate">
+        <span class="step-number">Step 6</span>
+        <div class="step-label">System Execution and Validation Testing</div>
+        <div class="step-detail">Functional verification, UI review, stakeholder acceptance</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0 L10 22" stroke="#94a3b8" stroke-width="1.5" fill="none"/><path d="M6 18 L10 24 L14 18" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- Step 7: Decision / Loop -->
+    <div class="step-row">
+      <div class="actor-label"><span class="actor-tag human-tag">Human</span></div>
+      <div class="step human" style="border-style:dashed; background: linear-gradient(135deg, var(--amber-50) 0%, #fef9ee 100%);">
+        <span class="step-number">Step 7</span>
+        <div class="step-label">If Needed: New Refinement Prompt Is Issued</div>
+        <div class="step-detail">Iterates back to Step 1 with updated feedback</div>
+      </div>
+    </div>
+
+    <!-- Feedback loop arrow -->
+    <div class="loop-container">
+      <svg width="100%" height="64" viewBox="0 0 560 64" preserveAspectRatio="xMidYMid meet" style="display:block; overflow:visible;">
+        <!-- Down from step 7 -->
+        <path d="M280 0 L280 20 Q280 36, 520 36 L540 36 Q556 36, 556 20 L556 -620"
+              stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-dasharray="6,4"/>
+        <!-- Arrowhead at top -->
+        <path d="M552 -616 L556 -624 L560 -616" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+        <!-- Label -->
+        <text x="540" y="54" font-family="'JetBrains Mono', monospace" font-size="10" fill="#94a3b8" text-anchor="end" letter-spacing="0.04em" font-style="italic">Iteration cycle continues until acceptance</text>
+      </svg>
+    </div>
+
+  </div>
+
+  <!-- Legend -->
+  <div class="legend-bar">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--amber-50); border-color:var(--amber-100);"></div>
+      Human-driven step
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--indigo-50); border-color:var(--indigo-100);"></div>
+      AI-driven step
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--emerald-50); border-color:var(--emerald-100);"></div>
+      Collaborative step
+    </div>
+    <div class="legend-item">
+      <svg width="28" height="14"><line x1="0" y1="7" x2="28" y2="7" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/></svg>
+      Feedback loop
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
