@@ -2436,6 +2436,7 @@ def seed_users():
         ("Alice Johnson", "alice.student@university.edu", "Student"),
         ("Bob Smith", "bob.student@university.edu", "Student"),
         ("Carol Lee", "carol.student@university.edu", "Student"),
+        ("Diana Park", "diana.student@university.edu", "Student"),
     ]
     for name, email, role in users:
         db.execute("INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, ?, ?)",
