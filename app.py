@@ -806,11 +806,18 @@ def _student_dashboard(user):
             (bid_group["id"],),
         ).fetchall()
     round_phase = get_round_phase(open_round) if open_round else None
+    # All published proposals (always visible on student dashboard)
+    all_published = db.execute(
+        "SELECT p.*, u.name AS professor_name "
+        "FROM proposals p JOIN users u ON p.created_by_professor_id = u.id "
+        "WHERE p.status = 'Published' ORDER BY p.updated_at DESC"
+    ).fetchall()
     return render_template("dashboard_student.html",
                            my_theses=my_theses, bids=bids,
                            available=available, open_round=open_round,
                            round_phase=round_phase,
-                           bid_group=bid_group, bid_group_bids=bid_group_bids)
+                           bid_group=bid_group, bid_group_bids=bid_group_bids,
+                           all_published=all_published)
 
 
 def _professor_dashboard(user):
@@ -879,6 +886,12 @@ def _professor_dashboard(user):
         "ORDER BY t.start_date ASC",
         (user["id"],),
     ).fetchall()
+    # All published proposals (visible to professors on dashboard)
+    all_published = db.execute(
+        "SELECT p.*, u.name AS professor_name "
+        "FROM proposals p JOIN users u ON p.created_by_professor_id = u.id "
+        "WHERE p.status = 'Published' ORDER BY p.updated_at DESC"
+    ).fetchall()
     return render_template("dashboard_professor.html",
                            proposals=proposals, ongoing=ongoing,
                            terminated=terminated, stopped=stopped,
@@ -887,6 +900,7 @@ def _professor_dashboard(user):
                            effort=effort, topic_dist=topic_dist,
                            summary=summary,
                            reviewer_theses=reviewer_theses,
+                           all_published=all_published,
                            stats={"active_theses": len(ongoing),
                                   "proposals": len(proposals),
                                   "bids": total_bids,

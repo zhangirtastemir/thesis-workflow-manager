@@ -134,11 +134,11 @@
   {% endif %}
 </div>
 
-{# ── Available Proposals (quick view) ── #}
+{# ── Bidding Status Banner ── #}
 {% if open_round and not bid_group %}
 <div class="section">
   <div class="flex justify-between items-center mb-1">
-    <h2>Available Proposals</h2>
+    <h2>Active Bidding Round</h2>
     <a href="{{ url_for('student_bidding') }}" class="btn btn-primary btn-sm">Go to Bidding</a>
   </div>
   {% if round_phase == 'proposal_collection' %}
@@ -146,27 +146,7 @@
     Round "{{ open_round.name }}" — Proposals are being collected. Bidding opens after {{ open_round.proposal_collection_end }}.
   </div>
   {% else %}
-  <div class="flash success">Bidding round "{{ open_round.name }}" is open ({{ open_round.start_date }} – {{ open_round.end_date }}).</div>
-  {% endif %}
-  {% if available %}
-  <div class="card" style="padding:0; overflow:hidden;">
-    <table>
-      <thead>
-        <tr><th>Title</th><th>Professor</th><th>Abstract</th></tr>
-      </thead>
-      <tbody>
-        {% for p in available %}
-        <tr>
-          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
-          <td>{{ p.professor_name }}</td>
-          <td class="text-sm text-muted" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ (p.abstract or '')[:80] }}{% if p.abstract and p.abstract|length > 80 %}...{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <div class="card empty-state">No proposals available for bidding right now.</div>
+  <div class="flash success">Bidding round "{{ open_round.name }}" is open ({{ open_round.start_date }} – {{ open_round.end_date }}). Submit your choices!</div>
   {% endif %}
 </div>
 {% elif not open_round and not bid_group %}
@@ -175,5 +155,33 @@
   <div class="card empty-state">No bidding round is currently open.</div>
 </div>
 {% endif %}
+
+{# ── Published Proposals (always visible) ── #}
+<div class="section">
+  <div class="flex justify-between items-center mb-1">
+    <h2>Published Proposals</h2>
+    <a href="{{ url_for('proposals_list') }}" class="btn btn-outline btn-sm">View All</a>
+  </div>
+  {% if all_published %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for p in all_published %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td class="text-sm text-muted" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ (p.description or '')[:80] }}{% if p.description and p.description|length > 80 %}...{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No published proposals at this time.</div>
+  {% endif %}
+</div>
 
 {% endblock %}

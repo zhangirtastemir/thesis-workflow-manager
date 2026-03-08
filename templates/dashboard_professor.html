@@ -42,6 +42,7 @@
   <button class="tab-btn" data-tab="tab-terminated" onclick="switchTab('prof','tab-terminated')">Terminated ({{ terminated|length }})</button>
   <button class="tab-btn" data-tab="tab-proposals" onclick="switchTab('prof','tab-proposals')">My Proposals ({{ proposals|length }})</button>
   <button class="tab-btn" data-tab="tab-reviewer" onclick="switchTab('prof','tab-reviewer')">Reviewing ({{ reviewer_theses|length }})</button>
+  <button class="tab-btn" data-tab="tab-published" onclick="switchTab('prof','tab-published')">Published Proposals ({{ all_published|length }})</button>
   <button class="tab-btn" data-tab="tab-analytics" onclick="switchTab('prof','tab-analytics')">Analytics</button>
 </div>
 
@@ -202,6 +203,31 @@
   </div>
   {% else %}
   <div class="card empty-state">No theses assigned to you for review.</div>
+  {% endif %}
+</div>
+
+{# ── Tab: Published Proposals ── #}
+<div id="tab-published" class="tab-content" data-tab-group="prof">
+  <h2>All Published Proposals</h2>
+  {% if all_published %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Professor</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for p in all_published %}
+        <tr>
+          <td><a href="{{ url_for('proposal_detail', proposal_id=p.id) }}">{{ p.title }}</a></td>
+          <td>{{ p.professor_name }}</td>
+          <td class="text-sm text-muted" style="max-width:350px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ (p.description or '')[:100] }}{% if p.description and p.description|length > 100 %}...{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card empty-state">No published proposals at this time.</div>
   {% endif %}
 </div>
 
